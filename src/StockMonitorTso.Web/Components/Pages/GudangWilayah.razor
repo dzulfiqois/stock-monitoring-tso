@@ -1,0 +1,255 @@
+@page "/gudang-wilayah"
+@attribute [Authorize]
+@rendermode InteractiveServer
+
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using StockMonitorTso.Domain.Entities
+@using StockMonitorTso.Infrastructure.Services
+
+@inject IStockDashboardService Dashboard
+@inject IStockWriteService StockWrite
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager NavigationManager
+
+<PageTitle>Gudang Wilayah</PageTitle>
+
+@if (cards is null)
+{
+    <div class="sm-body-md" style="padding:40px 0">Memuat...</div>
+}
+else
+{
+    <div style="display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:20px">
+        <div>
+            <h1 class="sm-display-lg">Gudang Wilayah</h1>
+            <p class="sm-body-md" style="max-width:660px;margin:4px 0 0">
+                Pemantauan stok per Sales Area (Wilayah × Produk) di wilayah Papua-Maluku.
+            </p>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center">
+            <select class="sm-filter" style="width:auto" @bind="filterObyek" @bind:after="OnFilterChanged">
+                <option value="Semua">Semua Obyek</option>
+                <option value="MinyakTanah">Minyak Tanah</option>
+                <option value="GasLpg">Gas LPG</option>
+            </select>
+            <AuthorizeView Roles="Superadmin,Operator">
+                <Authorized>
+                    <a class="sm-btn sm-btn-primary sm-btn-sm" href="sales-area/register">
+                        <span class="material-symbols-outlined" style="font-size:18px">add</span> Tambah Gudang
+                    </a>
+                </Authorized>
+            </AuthorizeView>
+        </div>
+    </div>
+
+    @* Metrik ringkasan (ala DESIGN.md metric overview) *@
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin-bottom:20px">
+        <div class="sm-kpi">
+            <span class="sm-label-caps">Total Stok (Wilayah-Papua-Maluku)</span>
+            <div><span class="value">@(summary?.TotalStok.ToString("N0") ?? "0")</span> <span class="unit">satuan</span></div>
+        </div>
+        <div class="sm-kpi @(summary is not null && summary.ProdukKritis > 0 ? "sm-kpi-kritis" : "")">
+            <span class="sm-label-caps">Produk Kritis (CD &lt; 3)</span>
+            <div><span class="value">@(summary?.ProdukKritis.ToString() ?? "0")</span> <span class="unit">entitas</span></div>
+        </div>
+        <div class="sm-kpi">
+            <span class="sm-label-caps">Exhaust Terdekat</span>
+            <div><span class="value" style="font-size:22px;line-height:30px">@(summary?.ExhaustTerdekat?.ToString("dd MMM yyyy") ?? "-")</span></div>
+        </div>
+    </div>
+
+    @if (cards.Count == 0)
+    {
+        <div class="sm-card" style="padding:24px;text-align:center">
+            <span class="material-symbols-outlined" style="font-size:40px;color:var(--sm-outline)">warehouse</span>
+            <div class="sm-body-md" style="margin-top:8px">
+                Belum ada data Sales Area. Gunakan "Tambah Gudang" untuk mendaftarkan entitas baru.
+            </div>
+        </div>
+    }
+    else
+    {
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px">
+            @foreach (var card in cards)
+            {
+                <div class="sm-card" style="display:flex;flex-direction:column;gap:12px">
+                    <div style="display:flex;justify-content:space-between;align-items:flex-start">
+                        <div>
+                            <div class="sm-headline-md">@card.Wilayah.DisplayName()</div>
+                            <div class="sm-label-caps" style="margin-top:2px">Sales Area · @(card.Produk == Produk.MinyakTanah ? "Minyak Tanah" : "Gas Tabung")</div>
+                        </div>
+                        @StatusPill(card.StatusTerburuk)
+                    </div>
+
+                    <div class="sm-label-caps">
+                        Realisasi: @card.Tanggal.ToString("dd MMM yyyy")
+                    </div>
+
+                    @if (card.Produk == Produk.MinyakTanah)
+                    {
+                        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center">
+                            <div>
+                                <div class="sm-label-caps">Gudang</div>
+                                <div class="sm-title-sm">@Format(card.StokGudang)</div>
+                            </div>
+                            <div>
+                                <div class="sm-label-caps">Agen</div>
+                                <div class="sm-title-sm">@Format(card.StokAgen)</div>
+                            </div>
+                            <div>
+                                <div class="sm-label-caps">Outlet</div>
+                                <div class="sm-title-sm">@Format(card.StokOutlet)</div>
+                            </div>
+                        </div>
+                        <div style="display:flex;justify-content:space-between">
+                            <span class="sm-label-caps">Total Stok</span>
+                            <span class="sm-title-sm" style="color:var(--sm-primary)">@Format(card.TotalStok) KL</span>
+                        </div>
+                        <div class="sm-body-md" style="font-size:12px">
+                            Terjual: @Format(card.StokHabisTerjual) KL · Intransit: @Format(card.StokIntransit) KL
+                        </div>
+                    }
+                    else
+                    {
+                        <div style="display:flex;flex-direction:column;gap:6px">
+                            <div class="sm-label-caps">Stok Gudang Wilayah</div>
+                            <div style="display:flex;gap:8px;flex-wrap:wrap">
+                                <span class="sm-chip chip-55"><span class="dot"></span> 5.5 kg: @Format(card.StokGudang55Kg)</span>
+                                <span class="sm-chip chip-12"><span class="dot"></span> 12 kg: @Format(card.StokGudang12Kg)</span>
+                                <span class="sm-chip chip-50"><span class="dot"></span> 50 kg: @Format(card.StokGudang50Kg)</span>
+                            </div>
+                        </div>
+                        <div style="display:flex;justify-content:space-between">
+                            <span class="sm-label-caps">Total Stok (Gas Tabung)</span>
+                            <span class="sm-title-sm" style="color:var(--sm-primary)">@card.TotalStok.ToString("N0") Tabung</span>
+                        </div>
+                    }
+
+                    @if (card.AgenRows.Count > 0)
+                    {
+                        <div style="border-top:1px solid var(--sm-outline-variant);padding-top:10px">
+                            <a class="sm-btn sm-btn-outline sm-btn-sm" style="width:100%" href="wilayah/@card.Wilayah/agen">
+                                <span class="material-symbols-outlined" style="font-size:16px">storefront</span> Agen (@card.AgenRows.Count)
+                            </a>
+                        </div>
+                    }
+
+                    <div style="display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--sm-outline-variant);padding-top:10px;margin-top:auto">
+                        <button class="sm-btn sm-btn-outline sm-btn-sm" @onclick="() => NavigateTo(card)">Detail</button>
+                        <AuthorizeView Roles="Superadmin">
+                            <Authorized>
+                                <button class="sm-btn sm-btn-danger sm-btn-sm" @onclick="() => PromptDelete(card)">
+                                    <span class="material-symbols-outlined" style="font-size:16px">delete</span> Hapus
+                                </button>
+                            </Authorized>
+                        </AuthorizeView>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+}
+
+@if (deleteTarget is not null)
+{
+    <div class="sm-modal-backdrop"></div>
+    <div style="position:fixed;inset:0;z-index:110;display:flex;align-items:center;justify-content:center">
+        <div class="sm-modal">
+            <div class="sm-modal-header">
+                <h3 class="sm-title-sm" style="margin:0">Hapus Sales Area</h3>
+                <button class="sm-btn sm-btn-outline sm-btn-sm" @onclick="CancelDelete">
+                    <span class="material-symbols-outlined" style="font-size:18px">close</span>
+                </button>
+            </div>
+            <div class="sm-modal-body">
+                <p class="sm-body-md" style="margin:0">
+                    Hapus <strong style="color:var(--sm-on-surface)">@deleteTarget.Wilayah.DisplayName() — @deleteTarget.Produk.DisplayName()</strong>?
+                    Entitas dihapus (soft delete); riwayat transaksi tetap di audit log.
+                </p>
+            </div>
+            <div class="sm-modal-footer">
+                <button class="sm-btn sm-btn-outline sm-btn-sm" @onclick="CancelDelete">Batal</button>
+                <button class="sm-btn sm-btn-danger sm-btn-sm" @onclick="ConfirmDelete">Hapus</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<SalesAreaCardRow>? cards;
+    private DashboardSummary? summary;
+    private string filterObyek = "Semua";
+    private SalesAreaCardRow? deleteTarget;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        var filter = filterObyek switch
+        {
+            "MinyakTanah" => DashboardFilter.MinyakTanah,
+            "GasLpg" => DashboardFilter.GasLpg,
+            _ => DashboardFilter.Semua,
+        };
+
+        cards = (await Dashboard.GetSalesAreaCardsAsync(filter)).ToList();
+        summary = await Dashboard.GetSummaryAsync();
+    }
+
+    private async Task OnFilterChanged()
+    {
+        await LoadAsync();
+    }
+
+    private void NavigateTo(SalesAreaCardRow card)
+    {
+        var produk = card.Produk == Produk.MinyakTanah ? "MinyakTanah" : "Lpg";
+        NavigationManager.NavigateTo($"sales-area/{card.Wilayah}/{produk}");
+    }
+
+    private void PromptDelete(SalesAreaCardRow card)
+    {
+        deleteTarget = card;
+    }
+
+    private void CancelDelete()
+    {
+        deleteTarget = null;
+    }
+
+    private async Task ConfirmDelete()
+    {
+        var target = deleteTarget;
+        deleteTarget = null;
+        if (target is null)
+        {
+            return;
+        }
+
+        var state = await AuthStateProvider.GetAuthenticationStateAsync();
+        foreach (var id in target.EntityIds)
+        {
+            await StockWrite.DeleteAsync(state.User, id);
+        }
+
+        await LoadAsync();
+    }
+
+    private static string Format(decimal? value) => value?.ToString("0.###") ?? "-";
+
+    private static MarkupString StatusPill(Status? status)
+    {
+        var (label, css) = status switch
+        {
+            Status.Aman => ("Aman", "sm-pill sm-pill-success"),
+            Status.Warning => ("Warning", "sm-pill sm-pill-warning"),
+            Status.Kritis => ("Kritis", "sm-pill sm-pill-danger"),
+            _ => ("-", "sm-pill sm-pill-neutral"),
+        };
+        return new MarkupString($"<span class=\"{css}\">{label}</span>");
+    }
+}

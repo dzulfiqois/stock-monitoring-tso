@@ -1,0 +1,44 @@
+[
+  {
+    "id": "MT-001",
+    "nama": "PT Samudera Nusantara",
+    "jenis_kendaraan": "Kapal Tangki",
+    "kapasitas_max": 1000,
+    "satuan_kapasitas": "Kiloliter",
+    "rute": ["Pusat -> Gudang Wilayah Papua", "Pusat -> Gudang Wilayah Maluku"],
+    "area_coverage": ["Papua", "Maluku"],
+    "kontak": "0812-0001-0001",
+    "pic": "Budi Santoso",
+    "active": true,
+    "tarif": 150000,
+    "satuan_tarif": "per_kiloliter"
+  },
+  {
+    "id": "MT-002",
+    "nama": "CV Garuda Logistik",
+    "jenis_kendaraan": "Truk Tangki",
+    "kapasitas_max": 8,
+    "satuan_kapasitas": "Kiloliter",
+    "rute": ["Pusat -> Gudang Wilayah Papua Barat", "Pusat -> Gudang Wilayah Papua Barat Daya"],
+    "area_coverage": ["Papua Barat", "Papua Barat Daya"],
+    "kontak": "0813-0002-0002",
+    "pic": "Sari Wulandari",
+    "active": true,
+    "tarif": 90000,
+    "satuan_tarif": "per_kiloliter"
+  },
+  {
+    "id": "MT-003",
+    "nama": "PT Papindo Cargo",
+    "jenis_kendaraan": "Truk Tabung",
+    "kapasitas_max": 600,
+    "satuan_kapasitas": "Tabung",
+    "rute": ["Pusat -> Gudang Wilayah Papua Tengah", "Pusat -> Gudang Wilayah Papua Selatan-Pegunungan"],
+    "area_coverage": ["Papua Tengah", "Papua Selatan-Pegunungan"],
+    "kontak": "0852-0003-0003",
+    "pic": "Andi Pratama",
+    "active": true,
+    "tarif": 25000,
+    "satuan_tarif": "per_tabung"
+  }
+]

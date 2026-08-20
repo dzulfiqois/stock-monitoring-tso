@@ -1,0 +1,9 @@
+llm driven development
+
+Dashboard tabel lpg pada tanggal 15 agustus 2026 pada pukul 08.00 terdiri atas 
+
+| No. | Nama Sales Area | Stok LPG di Gudang Agen                                   | LPG ukuran 5.5kg | LPG ukuran 12kg | LPG ukuran 50kg | Total Stok  | Daily Objective Throughput                                            | Covered Days | Status Stok<br />(Aman/Warning/Kritis) | Next Supply     |
+| --- | --------------- | --------------------------------------------------------- | ---------------- | --------------- | --------------- | ----------- | --------------------------------------------------------------------- | ------------ | -------------------------------------- | --------------- |
+| 1.  | Papua           | 200 Tabung 5.5kg<br />150 Tabung 12kg<br />50 Tabung 50kg | 300 Tabung       | 250 Tabung      | 50 Tabung       | 1000 Tabung | 20 Tabung 5.5kg/hari<br />15 Tabung 12kg/hari<br />5 Tabung 50kg/hari | 10 Hari      | Aman                                   | 15 Agustus 2026 |
+
+aturannya, jumlah tabung yang tersedia dari warehouse, tidak boleh ada selisih antara tiap kolom lainnya. misalkan, warehouse papua punya 200 tabung 5.5kg, lalu ada 100 tabung 5.5kg keluar saat agen x meminta pasokan pada jam 09.00, maka jumlah tabung 5.5kg sekarang harus 100 secara otomatis saat proses muatnya dimulai. jadi tidak ada selisih sedikitpun dari jumlah tabung yang beredar pada wilayah papua.

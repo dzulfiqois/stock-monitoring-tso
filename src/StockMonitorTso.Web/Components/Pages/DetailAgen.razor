@@ -1,0 +1,397 @@
+@page "/agen/{AgenId:int}"
+@attribute [Authorize]
+@rendermode InteractiveServer
+
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using StockMonitorTso.Domain.Entities
+@using StockMonitorTso.Infrastructure.Services
+
+@inject IStockDashboardService Dashboard
+@inject IStockWriteService StockWrite
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager NavigationManager
+
+<PageTitle>Detail Agen</PageTitle>
+
+@if (detail is null)
+{
+    <div class="sm-card" style="padding:24px">Data tidak ditemukan.</div>
+}
+else
+{
+    <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:16px;margin-bottom:20px">
+        <div>
+            <div class="sm-breadcrumb">
+                <a href="gudang-wilayah">Gudang Wilayah</a>
+                <span class="material-symbols-outlined" style="font-size:16px">chevron_right</span>
+                <a href="wilayah/@detail.Wilayah/agen">Agen @detail.Wilayah.DisplayName()</a>
+                <span class="material-symbols-outlined" style="font-size:16px">chevron_right</span>
+                <span style="color:var(--sm-on-surface)">@detail.Nama</span>
+            </div>
+            <h1 class="sm-headline-md" style="margin-top:6px">Inventori Agen — @detail.Nama</h1>
+            <p class="sm-body-md" style="margin:4px 0 0">Sales Area @detail.Wilayah.DisplayName() — Realisasi dan pemantauan stok harian.</p>
+        </div>
+        <AuthorizeView Roles="Superadmin,Supervisi">
+            <Authorized>
+                <button class="sm-btn sm-btn-primary" @onclick="OpenUpdateModal">
+                    <span class="material-symbols-outlined" style="font-size:18px">sync</span> Update Data Harian
+                </button>
+            </Authorized>
+        </AuthorizeView>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:20px">
+        <div class="sm-kpi">
+            <span class="sm-label-caps">Total Sisa Stok</span>
+            <div><span class="value">@detail.TotalStok.ToString("N0")</span> <span class="unit">satuan</span></div>
+        </div>
+        <div class="sm-kpi">
+            <span class="sm-label-caps">Daily Obj. Throughput</span>
+            <div><span class="value" style="font-size:26px">@detail.TotalDot.ToString("0.#")</span> <span class="unit">/hari</span></div>
+        </div>
+        <div class="sm-kpi">
+            <span class="sm-label-caps">Covered Days Estimasi</span>
+            <div><span class="value" style="font-size:26px">@(detail.CdTerburuk?.ToString("0.##") ?? "-")</span> <span class="unit">hari</span></div>
+        </div>
+        <div class="sm-kpi @(detail.StatusArea == Status.Kritis ? "sm-kpi-kritis" : "")">
+            <span class="sm-label-caps">Status Area</span>
+            <div><span class="value" style="font-size:26px">@StatusText(detail.StatusArea)</span></div>
+        </div>
+    </div>
+
+    <div class="sm-table-wrap" style="margin-bottom:20px">
+        <div class="sm-label-caps" style="padding:14px var(--sm-pad);border-bottom:1px solid var(--sm-outline-variant);display:flex;justify-content:space-between;align-items:center">
+            <span>Data Inventory per Produk</span>
+            <span style="text-transform:none;letter-spacing:0">Exhaust terdekat: @(detail.ExhaustTerdekat?.ToString("dd MMM yyyy") ?? "-")</span>
+        </div>
+        <div style="overflow-x:auto">
+            <table class="sm-table">
+                <thead>
+                    <tr>
+                        <th>Produk</th>
+                        <th class="num">Stok</th>
+                        <th class="num">DOT</th>
+                        <th class="num">Covered Days</th>
+                        <th>Status</th>
+                        <th>Exhaust</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in detail.Rows)
+                    {
+                        <tr>
+                            <td>@row.Produk.DisplayName()</td>
+                            <td class="num">@row.Stok.ToString("N0")</td>
+                            <td class="num">@row.DOT.ToString("0.##")</td>
+                            <td class="num">@(row.Cd?.ToString("0.##") ?? "N/A")</td>
+                            <td>@StatusPill(row.Status)</td>
+                            <td>@row.ExhaustDate?.ToString("dd MMM yyyy")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="sm-table-wrap">
+        <div class="sm-label-caps" style="padding:14px var(--sm-pad);border-bottom:1px solid var(--sm-outline-variant)">
+            Log Transaksi Stok
+        </div>
+        <div style="overflow-x:auto">
+            <table class="sm-table">
+                <thead>
+                    <tr>
+                        <th>Tanggal</th>
+                        <th>Jenis</th>
+                        <th class="num">Kuantitas</th>
+                        <th>Asal / Tujuan</th>
+                        <th>Catatan</th>
+                        <th class="num">Stok Sesudah</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (detail.Transactions.Count == 0)
+                    {
+                        <tr><td colspan="6" style="text-align:center;color:var(--sm-on-surface-variant)">Belum ada transaksi.</td></tr>
+                    }
+                    else
+                    {
+                        @foreach (var t in detail.Transactions)
+                        {
+                            <tr>
+                                <td>@t.Tanggal.ToString("dd MMM yyyy")</td>
+                                <td>@t.Type</td>
+                                <td class="num">@t.Kuantitas.ToString("0.###")</td>
+                                <td>@(t.Tujuan ?? "-")</td>
+                                <td>@(t.Catatan ?? "-")</td>
+                                <td class="num">@t.StokSesudah.ToString("0.###")</td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+@if (showUpdateModal)
+{
+    <div class="sm-modal-backdrop"></div>
+    <div style="position:fixed;inset:0;z-index:110;display:flex;align-items:center;justify-content:center">
+        <div class="sm-modal">
+            <div class="sm-modal-header">
+                <h3 class="sm-title-sm" style="margin:0">Update Data Harian</h3>
+                <button class="sm-btn sm-btn-outline sm-btn-sm" @onclick="CloseUpdateModal">
+                    <span class="material-symbols-outlined" style="font-size:18px">close</span>
+                </button>
+            </div>
+            <div class="sm-modal-body">
+                <div class="sm-segmented" style="margin-bottom:16px">
+                    <button type="button" class="@(updateMode == "restock" ? "active" : "")" @onclick="SetModeRestock">Isi Ulang Stok</button>
+                    <button type="button" class="@(updateMode == "daily" ? "active" : "")" @onclick="SetModeDaily">Update Stok Harian</button>
+                </div>
+
+                <div style="margin-bottom:12px">
+                    <label class="sm-label-caps" style="display:block;margin-bottom:6px">Produk tujuan</label>
+                    <select class="sm-filter" style="width:100%" @bind="selectedProdukIndex">
+                        @for (var i = 0; i < detail!.Rows.Count; i++)
+                        {
+                            <option value="@i">@detail.Rows[i].Produk.DisplayName()</option>
+                        }
+                    </select>
+                </div>
+
+                @if (updateMode == "restock")
+                {
+                    <div style="margin-bottom:12px">
+                        <label class="sm-label-caps" style="display:block;margin-bottom:6px">Kuantitas tambah (isi ulang)</label>
+                        <input type="number" class="sm-frame" @bind="restockQty" min="0" step="1" style="width:100%;padding:10px;border-radius:var(--sm-radius);border:1px solid var(--sm-outline-variant);background:var(--sm-surface-bright)" />
+                    </div>
+                    <div style="margin-bottom:12px">
+                        <label class="sm-label-caps" style="display:block;margin-bottom:6px">Tanggal Realisasi</label>
+                        <input type="date" class="sm-frame" @bind="restockDate" style="width:100%;padding:10px;border-radius:var(--sm-radius);border:1px solid var(--sm-outline-variant);background:var(--sm-surface-bright)" />
+                    </div>
+                }
+                else
+                {
+                    var hasLpg = detail!.Rows.Any(r => r.Produk != StockMonitorTso.Domain.Entities.Produk.MinyakTanah);
+                    var hasMinyak = detail!.Rows.Any(r => r.Produk == StockMonitorTso.Domain.Entities.Produk.MinyakTanah);
+                    if (hasLpg)
+                    {
+                        <div class="sm-label-caps" style="margin-bottom:8px">LPG — per ukuran tabung</div>
+                        <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:14px">
+                            <div style="border:1px solid var(--sm-outline-variant);border-radius:var(--sm-radius);padding:10px">
+                                <div class="sm-label-caps" style="margin-bottom:8px"><span class="sm-chip chip-55"><span class="dot"></span>5.5 kg</span></div>
+                                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+                                    <div><label class="sm-label-caps" style="display:block;margin-bottom:4px">Stok Terjual (Tabung)</label><input type="number" class="sm-frame" @bind="dailyTerjual55" min="0" step="1" style="width:100%;padding:8px;border-radius:var(--sm-radius);border:1px solid var(--sm-outline-variant);background:var(--sm-surface-bright)" /></div>
+                                    <div><label class="sm-label-caps" style="display:block;margin-bottom:4px">Stok Intransit</label><input type="number" class="sm-frame" @bind="dailyIntransit55" min="0" step="1" style="width:100%;padding:8px;border-radius:var(--sm-radius);border:1px solid var(--sm-outline-variant);background:var(--sm-surface-bright)" /></div>
+                                </div>
+                                <label style="display:flex;align-items:center;gap:6px;margin-top:8px;cursor:pointer"><input type="checkbox" @bind="dailyOpnameEnabled55" /> <span class="sm-label-caps">Stok Opname</span></label>
+                                <input type="number" class="sm-frame" @bind="dailyOpname55" step="1" disabled="@(!dailyOpnameEnabled55)" style="width:100%;padding:8px;margin-top:4px;border-radius:var(--sm-radius);border:1px solid var(--sm-outline-variant);background:@(dailyOpnameEnabled55 ? "var(--sm-surface-bright)" : "var(--sm-surface-container)")" />
+                            </div>
+                            <div style="border:1px solid var(--sm-outline-variant);border-radius:var(--sm-radius);padding:10px">
+                                <div class="sm-label-caps" style="margin-bottom:8px"><span class="sm-chip chip-12"><span class="dot"></span>12 kg</span></div>
+                                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+                                    <div><label class="sm-label-caps" style="display:block;margin-bottom:4px">Stok Terjual (Tabung)</label><input type="number" class="sm-frame" @bind="dailyTerjual12" min="0" step="1" style="width:100%;padding:8px;border-radius:var(--sm-radius);border:1px solid var(--sm-outline-variant);background:var(--sm-surface-bright)" /></div>
+                                    <div><label class="sm-label-caps" style="display:block;margin-bottom:4px">Stok Intransit</label><input type="number" class="sm-frame" @bind="dailyIntransit12" min="0" step="1" style="width:100%;padding:8px;border-radius:var(--sm-radius);border:1px solid var(--sm-outline-variant);background:var(--sm-surface-bright)" /></div>
+                                </div>
+                                <label style="display:flex;align-items:center;gap:6px;margin-top:8px;cursor:pointer"><input type="checkbox" @bind="dailyOpnameEnabled12" /> <span class="sm-label-caps">Stok Opname</span></label>
+                                <input type="number" class="sm-frame" @bind="dailyOpname12" step="1" disabled="@(!dailyOpnameEnabled12)" style="width:100%;padding:8px;margin-top:4px;border-radius:var(--sm-radius);border:1px solid var(--sm-outline-variant);background:@(dailyOpnameEnabled12 ? "var(--sm-surface-bright)" : "var(--sm-surface-container)")" />
+                            </div>
+                            <div style="border:1px solid var(--sm-outline-variant);border-radius:var(--sm-radius);padding:10px">
+                                <div class="sm-label-caps" style="margin-bottom:8px"><span class="sm-chip chip-50"><span class="dot"></span>50 kg</span></div>
+                                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+                                    <div><label class="sm-label-caps" style="display:block;margin-bottom:4px">Stok Terjual (Tabung)</label><input type="number" class="sm-frame" @bind="dailyTerjual50" min="0" step="1" style="width:100%;padding:8px;border-radius:var(--sm-radius);border:1px solid var(--sm-outline-variant);background:var(--sm-surface-bright)" /></div>
+                                    <div><label class="sm-label-caps" style="display:block;margin-bottom:4px">Stok Intransit</label><input type="number" class="sm-frame" @bind="dailyIntransit50" min="0" step="1" style="width:100%;padding:8px;border-radius:var(--sm-radius);border:1px solid var(--sm-outline-variant);background:var(--sm-surface-bright)" /></div>
+                                </div>
+                                <label style="display:flex;align-items:center;gap:6px;margin-top:8px;cursor:pointer"><input type="checkbox" @bind="dailyOpnameEnabled50" /> <span class="sm-label-caps">Stok Opname</span></label>
+                                <input type="number" class="sm-frame" @bind="dailyOpname50" step="1" disabled="@(!dailyOpnameEnabled50)" style="width:100%;padding:8px;margin-top:4px;border-radius:var(--sm-radius);border:1px solid var(--sm-outline-variant);background:@(dailyOpnameEnabled50 ? "var(--sm-surface-bright)" : "var(--sm-surface-container)")" />
+                            </div>
+                        </div>
+                    }
+                    if (hasMinyak)
+                    {
+                        <div class="sm-label-caps" style="margin-bottom:8px">Minyak Tanah</div>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+                            <div><label class="sm-label-caps" style="display:block;margin-bottom:4px">Stok Terjual (Kiloliter)</label><input type="number" class="sm-frame" @bind="dailyTerjualMinyak" min="0" step="0.1" style="width:100%;padding:8px;border-radius:var(--sm-radius);border:1px solid var(--sm-outline-variant);background:var(--sm-surface-bright)" /></div>
+                            <div><label class="sm-label-caps" style="display:block;margin-bottom:4px">Stok Intransit (Kiloliter)</label><input type="number" class="sm-frame" @bind="dailyIntransitMinyak" min="0" step="0.1" style="width:100%;padding:8px;border-radius:var(--sm-radius);border:1px solid var(--sm-outline-variant);background:var(--sm-surface-bright)" /></div>
+                        </div>
+                        <label style="display:flex;align-items:center;gap:6px;margin-bottom:12px;cursor:pointer"><input type="checkbox" @bind="dailyOpnameEnabledMinyak" /> <span class="sm-label-caps">Stok Opname (± Kiloliter)</span></label>
+                        <input type="number" class="sm-frame" @bind="dailyOpnameMinyak" step="0.1" disabled="@(!dailyOpnameEnabledMinyak)" style="width:100%;padding:8px;margin-bottom:12px;border-radius:var(--sm-radius);border:1px solid var(--sm-outline-variant);background:@(dailyOpnameEnabledMinyak ? "var(--sm-surface-bright)" : "var(--sm-surface-container)")" />
+                    }
+                    <div style="margin-bottom:12px">
+                        <label class="sm-label-caps" style="display:block;margin-bottom:6px">Keterangan</label>
+                        <input type="text" class="sm-frame" @bind="dailyKeterangan" style="width:100%;padding:10px;border-radius:var(--sm-radius);border:1px solid var(--sm-outline-variant);background:var(--sm-surface-bright)" />
+                    </div>
+                }
+                @if (!string.IsNullOrEmpty(formMessage))
+                {
+                    <div style="margin:12px 0 0;padding:10px;border-radius:var(--sm-radius);background:var(--sm-error-container);color:var(--sm-on-error-container)">@formMessage</div>
+                }
+            </div>
+            <div class="sm-modal-footer">
+                <button class="sm-btn sm-btn-outline sm-btn-sm" @onclick="CloseUpdateModal">Batal</button>
+                <button class="sm-btn sm-btn-primary sm-btn-sm" @onclick="SaveUpdate">Simpan Perubahan</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public int AgenId { get; set; }
+
+    private AgenDetail? detail;
+    private bool showUpdateModal;
+    private string updateMode = "restock";
+    private int selectedProdukIndex;
+    private decimal restockQty;
+    private DateTime restockDate = DateTime.Today;
+    private decimal dailyTerjual55, dailyOpname55, dailyIntransit55;
+    private bool dailyOpnameEnabled55;
+    private decimal dailyTerjual12, dailyOpname12, dailyIntransit12;
+    private bool dailyOpnameEnabled12;
+    private decimal dailyTerjual50, dailyOpname50, dailyIntransit50;
+    private bool dailyOpnameEnabled50;
+    private decimal dailyTerjualMinyak, dailyOpnameMinyak, dailyIntransitMinyak;
+    private bool dailyOpnameEnabledMinyak;
+    private string? dailyKeterangan;
+    private string? formMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        detail = await Dashboard.GetAgenDetailAsync(AgenId);
+        if (detail is not null)
+        {
+            selectedProdukIndex = 0;
+        }
+    }
+
+    private void OpenUpdateModal()
+    {
+        dailyTerjual55 = 0; dailyOpnameEnabled55 = false; dailyOpname55 = 0; dailyIntransit55 = 0;
+        dailyTerjual12 = 0; dailyOpnameEnabled12 = false; dailyOpname12 = 0; dailyIntransit12 = 0;
+        dailyTerjual50 = 0; dailyOpnameEnabled50 = false; dailyOpname50 = 0; dailyIntransit50 = 0;
+        dailyTerjualMinyak = 0; dailyOpnameEnabledMinyak = false; dailyOpnameMinyak = 0; dailyIntransitMinyak = 0;
+        dailyKeterangan = null; formMessage = null;
+        showUpdateModal = true;
+    }
+
+    private void SetModeRestock() => updateMode = "restock";
+
+    private void SetModeDaily() => updateMode = "daily";
+
+    private void CloseUpdateModal()
+    {
+        showUpdateModal = false;
+        formMessage = null;
+    }
+
+    private async Task SaveUpdate()
+    {
+        if (detail is null)
+        {
+            return;
+        }
+
+        var state = await AuthStateProvider.GetAuthenticationStateAsync();
+
+        if (updateMode == "restock")
+        {
+            var row = detail.Rows[selectedProdukIndex];
+            if (restockQty <= 0)
+            {
+                return;
+            }
+
+            try
+            {
+                await StockWrite.TransactAsync(state.User, row.StokEntitasId, StockTransactionType.Receive, restockQty, catatan: "Isi ulang stok");
+                CloseUpdateModal();
+                await LoadAsync();
+            }
+            catch (Exception ex)
+            {
+                formMessage = ex.Message;
+            }
+
+            return;
+        }
+
+        var entries = new List<(StockMonitorTso.Domain.Entities.Produk Produk, decimal Terjual, bool OpEnabled, decimal Opname, decimal Intransit)>
+        {
+            (StockMonitorTso.Domain.Entities.Produk.Lpg5_5Kg, dailyTerjual55, dailyOpnameEnabled55, dailyOpname55, dailyIntransit55),
+            (StockMonitorTso.Domain.Entities.Produk.Lpg12Kg, dailyTerjual12, dailyOpnameEnabled12, dailyOpname12, dailyIntransit12),
+            (StockMonitorTso.Domain.Entities.Produk.Lpg50Kg, dailyTerjual50, dailyOpnameEnabled50, dailyOpname50, dailyIntransit50),
+            (StockMonitorTso.Domain.Entities.Produk.MinyakTanah, dailyTerjualMinyak, dailyOpnameEnabledMinyak, dailyOpnameMinyak, dailyIntransitMinyak),
+        };
+
+        try
+        {
+            foreach (var (produk, terjual, opEnabled, opname, intransit) in entries)
+            {
+                var row = detail.Rows.FirstOrDefault(r => r.Produk == produk);
+                if (row is null)
+                {
+                    continue;
+                }
+
+                var perluIntransit = intransit != (row.StokIntransit ?? 0m);
+                var perluKeterangan = !string.IsNullOrWhiteSpace(dailyKeterangan);
+                if (perluIntransit || perluKeterangan)
+                {
+                    await StockWrite.UpdateDetailAsync(state.User, row.StokEntitasId, new UpdateDetailRequest
+                    {
+                        DOT = row.DOT,
+                        TanggalStokAwal = row.TanggalStokAwal,
+                        StokHabisTerjual = row.StokHabisTerjual,
+                        StokIntransit = intransit,
+                        Keterangan = dailyKeterangan,
+                    });
+                }
+
+                if (terjual > 0)
+                {
+                    await StockWrite.TransactAsync(state.User, row.StokEntitasId, StockTransactionType.Issue, terjual, catatan: dailyKeterangan ?? "Stok terjual harian");
+                }
+
+                if (opEnabled && opname != 0)
+                {
+                    await StockWrite.TransactAsync(state.User, row.StokEntitasId, StockTransactionType.Adjust, opname, catatan: $"Opname {dailyKeterangan ?? ""}".Trim());
+                }
+            }
+
+            CloseUpdateModal();
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            formMessage = ex.Message;
+        }
+    }
+
+    private static string StatusText(Status? status) => status switch
+    {
+        Status.Aman => "Aman",
+        Status.Warning => "Warning",
+        Status.Kritis => "Kritis",
+        _ => "-",
+    };
+
+    private static MarkupString StatusPill(Status? status)
+    {
+        var (label, css) = status switch
+        {
+            Status.Aman => ("Aman", "sm-pill sm-pill-success"),
+            Status.Warning => ("Warning", "sm-pill sm-pill-warning"),
+            Status.Kritis => ("Kritis", "sm-pill sm-pill-danger"),
+            _ => ("-", "sm-pill sm-pill-neutral"),
+        };
+        return new MarkupString($"<span class=\"{css}\">{label}</span>");
+    }
+}

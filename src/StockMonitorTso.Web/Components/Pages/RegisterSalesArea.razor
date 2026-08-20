@@ -1,0 +1,211 @@
+@page "/sales-area/register"
+@attribute [Authorize(Roles = "Superadmin,Operator")]
+@rendermode InteractiveServer
+
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using StockMonitorTso.Domain.Entities
+@using StockMonitorTso.Infrastructure.Services
+
+@inject IStockWriteService StockWrite
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager NavigationManager
+
+<PageTitle>Register Sales Area</PageTitle>
+
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+    <h1 class="sm-display-lg">Register Sales Area</h1>
+    <a class="sm-btn sm-btn-outline sm-btn-sm" href="gudang-wilayah">Kembali</a>
+</div>
+
+<div class="sm-card" style="max-width:680px">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+        <div>
+            <label class="sm-label-caps" style="display:block;margin-bottom:6px">Objek Stok</label>
+            <select class="sm-filter" style="width:100%" @bind="objek">
+                <option value="MinyakTanah">Minyak Tanah</option>
+                <option value="GasLpg">Gas LPG</option>
+            </select>
+        </div>
+        <div>
+            <label class="sm-label-caps" style="display:block;margin-bottom:6px">Wilayah</label>
+            <select class="sm-filter" style="width:100%" @bind="wilayah">
+                @foreach (var w in WilayahInfo.All)
+                {
+                    <option value="@w">@w.DisplayName()</option>
+                }
+            </select>
+        </div>
+    </div>
+
+    <div style="margin-bottom:16px">
+        <label class="sm-label-caps" style="display:block;margin-bottom:6px">Realisasi Tanggal</label>
+        <input type="date" class="sm-frame" @bind="tanggal" style="width:100%;padding:10px;border-radius:var(--sm-radius);border:1px solid var(--sm-outline-variant);background:var(--sm-surface-bright)" />
+    </div>
+
+    @if (objek == "MinyakTanah")
+    {
+        <div style="margin-bottom:12px">
+            <h3 class="sm-label-caps" style="color:var(--sm-primary)">Stok Minyak Tanah (KL)</h3>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+            <div>
+                <label class="sm-label-caps" style="display:block;margin-bottom:6px">Stok Agen</label>
+                <input type="number" step="0.1" min="0" @bind="stokAgen" class="sm-frame" style="width:100%;padding:10px;border-radius:var(--sm-radius);border:1px solid var(--sm-outline-variant);background:var(--sm-surface-bright)" />
+            </div>
+            <div>
+                <label class="sm-label-caps" style="display:block;margin-bottom:6px">DOT Agen (KL/hari)</label>
+                <input type="number" step="0.1" min="0" @bind="dotAgen" class="sm-frame" style="width:100%;padding:10px;border-radius:var(--sm-radius);border:1px solid var(--sm-outline-variant);background:var(--sm-surface-bright)" />
+            </div>
+            <div>
+                <label class="sm-label-caps" style="display:block;margin-bottom:6px">Stok Outlet</label>
+                <input type="number" step="0.1" min="0" @bind="stokOutlet" class="sm-frame" style="width:100%;padding:10px;border-radius:var(--sm-radius);border:1px solid var(--sm-outline-variant);background:var(--sm-surface-bright)" />
+            </div>
+            <div>
+                <label class="sm-label-caps" style="display:block;margin-bottom:6px">DOT Outlet (KL/hari)</label>
+                <input type="number" step="0.1" min="0" @bind="dotOutlet" class="sm-frame" style="width:100%;padding:10px;border-radius:var(--sm-radius);border:1px solid var(--sm-outline-variant);background:var(--sm-surface-bright)" />
+            </div>
+            <div>
+                <label class="sm-label-caps" style="display:block;margin-bottom:6px">Stok Habis Terjual</label>
+                <input type="number" step="0.1" min="0" @bind="terjual" class="sm-frame" style="width:100%;padding:10px;border-radius:var(--sm-radius);border:1px solid var(--sm-outline-variant);background:var(--sm-surface-bright)" />
+            </div>
+            <div>
+                <label class="sm-label-caps" style="display:block;margin-bottom:6px">Stok Intransit</label>
+                <input type="number" step="0.1" min="0" @bind="intransit" class="sm-frame" style="width:100%;padding:10px;border-radius:var(--sm-radius);border:1px solid var(--sm-outline-variant);background:var(--sm-surface-bright)" />
+            </div>
+        </div>
+        <div style="margin:14px 0">
+            <label class="sm-label-caps" style="display:block;margin-bottom:6px">Keterangan</label>
+            <input type="text" @bind="keterangan" class="sm-frame" style="width:100%;padding:10px;border-radius:var(--sm-radius);border:1px solid var(--sm-outline-variant);background:var(--sm-surface-bright)" />
+        </div>
+    }
+    else
+    {
+        <h3 class="sm-label-caps" style="color:var(--sm-primary);margin-bottom:12px">Stok LPG (Tabung)</h3>
+        <div class="sm-label-caps" style="color:var(--sm-on-surface-variant);margin-bottom:6px">Stok Agen</div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:12px">
+            <div><label class="sm-label-caps" style="display:block;margin-bottom:6px">5.5 kg</label><input type="number" min="0" @bind="stokAgen55" class="sm-frame" style="width:100%;padding:10px;border-radius:var(--sm-radius);border:1px solid var(--sm-outline-variant);background:var(--sm-surface-bright)" /></div>
+            <div><label class="sm-label-caps" style="display:block;margin-bottom:6px">12 kg</label><input type="number" min="0" @bind="stokAgen12" class="sm-frame" style="width:100%;padding:10px;border-radius:var(--sm-radius);border:1px solid var(--sm-outline-variant);background:var(--sm-surface-bright)" /></div>
+            <div><label class="sm-label-caps" style="display:block;margin-bottom:6px">50 kg</label><input type="number" min="0" @bind="stokAgen50" class="sm-frame" style="width:100%;padding:10px;border-radius:var(--sm-radius);border:1px solid var(--sm-outline-variant);background:var(--sm-surface-bright)" /></div>
+        </div>
+        <div class="sm-label-caps" style="color:var(--sm-on-surface-variant);margin-bottom:6px">Stok Outlet</div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:12px">
+            <div><label class="sm-label-caps" style="display:block;margin-bottom:6px">5.5 kg</label><input type="number" min="0" @bind="stokOutlet55" class="sm-frame" style="width:100%;padding:10px;border-radius:var(--sm-radius);border:1px solid var(--sm-outline-variant);background:var(--sm-surface-bright)" /></div>
+            <div><label class="sm-label-caps" style="display:block;margin-bottom:6px">12 kg</label><input type="number" min="0" @bind="stokOutlet12" class="sm-frame" style="width:100%;padding:10px;border-radius:var(--sm-radius);border:1px solid var(--sm-outline-variant);background:var(--sm-surface-bright)" /></div>
+            <div><label class="sm-label-caps" style="display:block;margin-bottom:6px">50 kg</label><input type="number" min="0" @bind="stokOutlet50" class="sm-frame" style="width:100%;padding:10px;border-radius:var(--sm-radius);border:1px solid var(--sm-outline-variant);background:var(--sm-surface-bright)" /></div>
+        </div>
+        <div class="sm-label-caps" style="color:var(--sm-on-surface-variant);margin-bottom:6px">DOT (Tabung/hari)</div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px">
+            <div><label class="sm-label-caps" style="display:block;margin-bottom:6px">5.5 kg</label><input type="number" min="0" @bind="dot55" class="sm-frame" style="width:100%;padding:10px;border-radius:var(--sm-radius);border:1px solid var(--sm-outline-variant);background:var(--sm-surface-bright)" /></div>
+            <div><label class="sm-label-caps" style="display:block;margin-bottom:6px">12 kg</label><input type="number" min="0" @bind="dot12" class="sm-frame" style="width:100%;padding:10px;border-radius:var(--sm-radius);border:1px solid var(--sm-outline-variant);background:var(--sm-surface-bright)" /></div>
+            <div><label class="sm-label-caps" style="display:block;margin-bottom:6px">50 kg</label><input type="number" min="0" @bind="dot50" class="sm-frame" style="width:100%;padding:10px;border-radius:var(--sm-radius);border:1px solid var(--sm-outline-variant);background:var(--sm-surface-bright)" /></div>
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(message))
+    {
+        <div style="margin:16px 0 0;padding:12px;border-radius:var(--sm-radius);background:@(isError ? "var(--sm-error-container)" : "rgba(22,163,74,.12)");color:@(isError ? "var(--sm-on-error-container)" : "var(--sm-success)")">
+            @message
+        </div>
+    }
+
+    <div style="display:flex;justify-content:flex-end;gap:12px;margin-top:20px;border-top:1px solid var(--sm-outline-variant);padding-top:16px">
+        <button class="sm-btn sm-btn-outline sm-btn-sm" @onclick="Cancel">Batal</button>
+        <button class="sm-btn sm-btn-primary" @onclick="Submit">Simpan</button>
+    </div>
+</div>
+
+@code {
+    private string objek = "MinyakTanah";
+    private Wilayah wilayah = Wilayah.Papua;
+    private DateTime tanggal = DateTime.Today;
+
+    private decimal stokAgen;
+    private decimal dotAgen;
+    private decimal stokOutlet;
+    private decimal dotOutlet;
+    private decimal terjual;
+    private decimal intransit;
+    private string? keterangan;
+
+    private decimal stokAgen55, stokAgen12, stokAgen50;
+    private decimal stokOutlet55, stokOutlet12, stokOutlet50;
+    private decimal dot55, dot12, dot50;
+
+    private string? message;
+    private bool isError;
+
+    private void Cancel()
+    {
+        NavigationManager.NavigateTo("gudang-wilayah");
+    }
+
+    private async Task Submit()
+    {
+        try
+        {
+            var state = await AuthStateProvider.GetAuthenticationStateAsync();
+            if (objek == "MinyakTanah")
+            {
+                await StockWrite.RegisterAsync(state.User, new RegisterStokRequest
+                {
+                    Wilayah = wilayah,
+                    Produk = Produk.MinyakTanah,
+                    Tier = Tier.GudangWilayah,
+                    TanggalStokAwal = tanggal,
+                    Stok = stokAgen,
+                    DOT = dotAgen,
+                    StokHabisTerjual = terjual,
+                    StokIntransit = intransit,
+                    Keterangan = keterangan,
+                });
+                await StockWrite.RegisterAsync(state.User, new RegisterStokRequest
+                {
+                    Wilayah = wilayah,
+                    Produk = Produk.MinyakTanah,
+                    Tier = Tier.Outlet,
+                    TanggalStokAwal = tanggal,
+                    Stok = stokOutlet,
+                    DOT = dotOutlet,
+                });
+            }
+            else
+            {
+                await RegisterLpgAsync(Tier.GudangWilayah, stokAgen55, stokAgen12, stokAgen50);
+                await RegisterLpgAsync(Tier.Outlet, stokOutlet55, stokOutlet12, stokOutlet50);
+            }
+
+            message = "Sales Area berhasil didaftarkan.";
+            isError = false;
+            await Task.Delay(400);
+            NavigationManager.NavigateTo("gudang-wilayah");
+        }
+        catch (Exception ex)
+        {
+            message = ex.Message;
+            isError = true;
+        }
+    }
+
+    private async Task RegisterLpgAsync(Tier tier, decimal s55, decimal s12, decimal s50)
+    {
+        var state = await AuthStateProvider.GetAuthenticationStateAsync();
+        foreach (var (produk, stok, dot) in new[]
+        {
+            (Produk.Lpg5_5Kg, s55, dot55),
+            (Produk.Lpg12Kg, s12, dot12),
+            (Produk.Lpg50Kg, s50, dot50),
+        })
+        {
+            await StockWrite.RegisterAsync(state.User, new RegisterStokRequest
+            {
+                Wilayah = wilayah,
+                Produk = produk,
+                Tier = tier,
+                TanggalStokAwal = tanggal,
+                Stok = stok,
+                DOT = dot,
+            });
+        }
+    }
+}

@@ -1,0 +1,36 @@
+# .NET build artifacts
+bin/
+obj/
+*.user
+*.suo
+*.userprefs
+
+# Visual Studio
+.vs/
+.vscode/
+
+# Rider
+.idea/
+
+# Test results
+TestResults/
+*.trx
+coverage/
+
+# NuGet
+*.nupkg
+*.snupkg
+
+# App runtime files
+appsettings.Development.json
+*.db
+*.db-shm
+*.db-wal
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log

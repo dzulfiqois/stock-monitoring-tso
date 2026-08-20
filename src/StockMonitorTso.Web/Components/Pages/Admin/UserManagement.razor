@@ -1,0 +1,143 @@
+@page "/admin/users"
+@attribute [Authorize(Roles = "Superadmin")]
+@rendermode InteractiveServer
+
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Identity
+@using StockMonitorTso.Infrastructure.Persistence
+@using StockMonitorTso.Infrastructure.Services
+@using StockMonitorTso.Web.Components.Account.Shared
+
+@inject AuthenticationStateProvider AuthStateProvider
+@inject IUserAdminService UserAdmin
+@inject UserManager<ApplicationUser> UserManager
+
+<PageTitle>Manajemen User</PageTitle>
+
+<h1>Manajemen User</h1>
+
+<StatusMessage Message="@message" />
+
+@if (users is null)
+{
+    <p>Memuat...</p>
+}
+else
+{
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Email</th>
+                <th>Role aktif</th>
+                <th>Role</th>
+                <th>Ganti Password</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var user in users)
+            {
+                var roles = userRoles[user.Id];
+                <tr>
+                    <td>@user.Email</td>
+                    <td>@user.ActiveRoleName</td>
+                    <td>
+                        <div class="btn-group btn-group-sm">
+                            @foreach (var role in SeedRoles)
+                            {
+                                <button type="button"
+                                        class="btn @(roles.Contains(role) ? "btn-primary" : "btn-outline-secondary")"
+                                        @onclick="() => ToggleRole(user, role)">
+                                    @role
+                                </button>
+                            }
+                        </div>
+                    </td>
+                    <td>
+                        <input type="password" class="form-control form-control-sm d-inline-block w-auto"
+                               placeholder="Password baru" @bind="passwordInputs[user.Id]" />
+                        <button type="button" class="btn btn-sm btn-outline-danger" @onclick="() => SetPassword(user)">
+                            Set
+                        </button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<ApplicationUser>? users;
+    private readonly Dictionary<string, HashSet<string>> userRoles = new();
+    private readonly Dictionary<string, string> passwordInputs = new();
+    private string? message;
+
+    private static readonly string[] SeedRoles = ["Superadmin", "Operator", "Supervisi", "Tamu"];
+
+    protected override async Task OnInitializedAsync()
+    {
+        users = (await UserAdmin.ListUsersAsync()).ToList();
+        foreach (var user in users)
+        {
+            userRoles[user.Id] = (await UserManager.GetRolesAsync(user)).ToHashSet();
+            passwordInputs[user.Id] = "";
+        }
+    }
+
+    private async Task ToggleRole(ApplicationUser user, string role)
+    {
+        try
+        {
+            var state = await AuthStateProvider.GetAuthenticationStateAsync();
+            var isInRole = userRoles[user.Id].Contains(role);
+            if (isInRole)
+            {
+                await UserAdmin.RemoveRoleAsync(state.User, user.Id, role);
+                message = $"Role '{role}' dihapus dari {user.Email}.";
+            }
+            else
+            {
+                await UserAdmin.AssignRoleAsync(state.User, user.Id, role);
+                message = $"Role '{role}' diberikan ke {user.Email}.";
+            }
+
+            var refreshed = await UserManager.FindByIdAsync(user.Id);
+            if (refreshed is not null && users is not null)
+            {
+                var index = users.FindIndex(u => u.Id == refreshed.Id);
+                if (index >= 0)
+                {
+                    users[index] = refreshed;
+                }
+            }
+            userRoles[user.Id] = (await UserManager.GetRolesAsync(refreshed ?? user)).ToHashSet();
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            message = ex.Message;
+        }
+    }
+
+    private async Task SetPassword(ApplicationUser user)
+    {
+        try
+        {
+            var state = await AuthStateProvider.GetAuthenticationStateAsync();
+            var newPassword = passwordInputs.GetValueOrDefault(user.Id);
+            if (string.IsNullOrWhiteSpace(newPassword))
+            {
+                message = "Password baru tidak boleh kosong.";
+                return;
+            }
+
+            await UserAdmin.SetPasswordAsync(state.User, user.Id, newPassword);
+            passwordInputs[user.Id] = "";
+            message = $"Password {user.Email} berhasil diganti.";
+        }
+        catch (Exception ex)
+        {
+            message = ex.Message;
+        }
+    }
+}

@@ -1,0 +1,253 @@
+<!DOCTYPE html><html lang="id" style=""><head><meta charset="utf-8"><meta content="width=device-width, initial-scale=1.0" name="viewport"><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={theme:{extend:{"colors":{"surface-container-high":"#e6e8ea","on-error":"#ffffff","primary-container":"#0f4c81","on-secondary":"#ffffff","on-tertiary-fixed":"#2f1400","on-tertiary-container":"#f9a767","secondary-fixed":"#cbe7f5","error-container":"#ffdad6","tertiary-container":"#743b00","outline":"#727780","surface-container-low":"#f2f4f6","on-primary-fixed-variant":"#07497d","on-primary-container":"#8ebdf9","on-primary-fixed":"#001c37","inverse-surface":"#2d3133","on-secondary-fixed-variant":"#304a55","inverse-on-surface":"#eff1f3","secondary-container":"#cbe7f5","on-tertiary":"#ffffff","tertiary-fixed":"#ffdcc4","secondary":"#48626e","on-tertiary-fixed-variant":"#6f3800","surface-bright":"#f7f9fb","primary":"#00355f","outline-variant":"#c2c7d1","background":"#f7f9fb","surface-container-highest":"#e0e3e5","surface-dim":"#d8dadc","surface-variant":"#e0e3e5","primary-fixed":"#d2e4ff","surface-container-lowest":"#ffffff","on-primary":"#ffffff","on-background":"#191c1e","error":"#ba1a1a","tertiary-fixed-dim":"#ffb780","on-surface-variant":"#42474f","on-surface":"#191c1e","surface":"#f7f9fb","surface-tint":"#2d6197","on-secondary-container":"#4e6874","on-error-container":"#93000a","tertiary":"#532800","secondary-fixed-dim":"#afcbd8","inverse-primary":"#a0c9ff","surface-container":"#eceef0","primary-fixed-dim":"#a0c9ff","on-secondary-fixed":"#021f29"},"borderRadius":{"DEFAULT":"0.125rem","lg":"0.25rem","xl":"0.5rem","full":"0.75rem"},"spacing":{"stack-lg":"32px","container-padding":"24px","stack-md":"16px","base":"4px","gutter":"16px","stack-sm":"8px"},"fontFamily":{"display-lg":["Inter"],"data-tabular":["JetBrains Mono"],"headline-md":["Inter"],"title-sm":["Inter"],"body-md":["Inter"],"label-caps":["Inter"]},"fontSize":{"display-lg":["32px",{"lineHeight":"40px","fontWeight":"700"}],"data-tabular":["13px",{"lineHeight":"16px","fontWeight":"500"}],"headline-md":["24px",{"lineHeight":"32px","fontWeight":"600"}],"title-sm":["18px",{"lineHeight":"24px","fontWeight":"600"}],"body-md":["14px",{"lineHeight":"20px","fontWeight":"400"}],"label-caps":["11px",{"lineHeight":"16px","letterSpacing":"0.05em","fontWeight":"700"}]}}}}</script><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&amp;display=swap" rel="stylesheet"></head><body class="bg-background font-body-md text-on-background"><aside class="fixed left-0 top-0 h-full w-72 bg-surface-container-low z-50 flex flex-col border-r border-outline-variant/30"><div class="px-container-padding py-stack-lg flex items-center gap-stack-sm"><img alt="Industrial Flow Logo" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD7EPtBA8RoqdAsxSyl7EI0x0nko2UUC5tx1luJmOAwXJ3vygQ1YSu5xnN3jREG8bFIDv1fLwj3lp3sAk13xc51vc-b4zTHYUWYIFLSrEuidaDBkBZ-UJiL9sjOOxc_qmXh5gSfJWxEEU4yphcMnD2Oou0A6dPSaSG9HaRLPpP34C9qmxdWL7No3NLjVZXhd3pRRqQHH2g-DRIdrUxdoC0mAJCaoqT-ejTRphu5CPEXkW7W7LBmXGVL"><span class="font-title-sm text-primary uppercase tracking-wider">FlowMonitor</span></div><nav class="flex-1 px-stack-md space-y-base" data-active-classes="bg-primary-container text-on-primary-container font-semibold shadow-sm"><a aria-current="page" class="flex items-center px-stack-md py-3 rounded-lg transition-all group bg-primary-container text-on-primary-container font-semibold shadow-sm" data-path="ringkasan-dashboard" href="#"><span class="material-symbols-outlined mr-3 text-[20px]">dashboard</span><span class="font-body-md">Ringkasan Dashboard</span></a><a class="flex items-center px-stack-md py-3 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all group" data-path="gudang-wilayah" href="#"><span class="material-symbols-outlined mr-3 text-[20px]">factory</span><span class="font-body-md">Gudang Wilayah</span></a><a class="flex items-center px-stack-md py-3 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all group" data-path="monitoring-agen" href="#"><span class="material-symbols-outlined mr-3 text-[20px]">local_shipping</span><span class="font-body-md">Monitoring Agen</span></a><a class="flex items-center px-stack-md py-3 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all group" data-path="monitoring-outlet" href="#"><span class="material-symbols-outlined mr-3 text-[20px]">storefront</span><span class="font-body-md">Monitoring Outlet</span></a><div class="h-24"></div><a class="flex items-center px-stack-md py-3 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all group" data-path="transport-shipping-order" href="#"><span class="material-symbols-outlined mr-3 text-[20px]">local_shipping</span><span class="font-body-md">Transport Shipping Order</span></a><a class="flex items-center px-stack-md py-3 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all group" data-path="laporan-analitik" href="#"><span class="material-symbols-outlined mr-3 text-[20px]">analytics</span><span class="font-body-md">Laporan &amp; Analitik</span></a></nav><div class="px-stack-md pt-stack-md border-t border-outline-variant/30 pb-stack-lg"><a class="flex items-center px-stack-md py-3 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all group" data-path="pengaturan" href="#"><span class="material-symbols-outlined mr-3 text-[20px]">settings</span><span class="font-body-md">Pengaturan</span></a></div></aside><div class="pl-72"><header class="fixed top-0 left-72 right-0 h-16 bg-surface/80 backdrop-blur-xl z-40 flex items-center justify-between px-container-padding shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="flex items-center bg-surface-container-highest/50 px-stack-md py-base rounded-full border border-outline-variant/30 w-96"><span class="material-symbols-outlined text-on-surface-variant text-[20px] mr-2">search</span><input class="bg-transparent border-none focus:ring-0 text-sm w-full text-on-surface" placeholder="Cari data distribusi..." type="text"></div><div class="flex items-center gap-stack-md"><div class="flex flex-col items-end mr-stack-sm"><span class="font-title-sm text-[14px] text-on-surface">Manager Operations</span><span class="font-label-caps text-on-surface-variant uppercase">HQ Division</span></div><div class="h-10 w-10 rounded-full border-2 border-primary-fixed p-0.5"><img alt="Profile" class="w-full h-full rounded-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB2x_L73giXng-6cHKidtqJZAoxqGLn-WklVjvLTWNk-Dfkj4deY0Y0eFkzOX2VhuDowTFrLTnp6SLD2jVXjk8he8Dyz9rS4k1nDirUk82Qbk82R2Hj1IwbCeRBhVQ2aZteEtpoZhdDf1tWD0_4rDh0xN0wSW-EfFj9pAJuTlq4LMqkGB5fZMF_xcTIzRwYBfTbSIqaHfPbNAV0znyUIvUmv1h18d17-VwfR2vPYzrDls_hwe2qRD5E"></div></div></header><main class="pt-16 min-h-screen bg-background p-container-padding"><div class="flex flex-col w-full gap-stack-lg animate-[fadeIn_0.3s_ease-out]">
+<!-- Header Section -->
+<div class="flex flex-col gap-stack-sm mt-stack-md">
+<nav class="flex items-center gap-2 text-on-surface-variant font-body-md text-sm">
+<a class="hover:text-primary transition-colors" href="#">Gudang Wilayah</a>
+<span class="material-symbols-outlined text-[16px]">chevron_right</span>
+<span class="text-on-surface font-medium">Papua (Gas Tabung)</span>
+</nav>
+<div class="flex items-start justify-between">
+<div class="flex flex-col">
+<h1 class="font-headline-md text-display-lg text-on-surface">Detail Monitoring Gas Tabung</h1>
+<p class="font-body-md text-on-surface-variant mt-1">Regional: Sales Area Papua</p>
+</div>
+<button class="flex items-center gap-2 px-6 py-3 bg-primary text-on-primary rounded-lg font-title-sm text-sm shadow-md hover:bg-primary/90 transition-all active:scale-95 group" onclick="document.getElementById('update-modal').classList.remove('hidden')">
+<span class="material-symbols-outlined text-[20px] group-hover:rotate-180 transition-transform duration-500">refresh</span>
+        Update Data Harian
+      </button>
+</div>
+</div>
+<!-- Summary KPI Cards -->
+<div class="grid grid-cols-1 md:grid-cols-4 gap-gutter">
+<div class="bg-surface-container-lowest p-stack-md rounded-xl shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
+<div class="absolute -right-8 -top-8 w-24 h-24 bg-primary/5 rounded-full blur-xl group-hover:bg-primary/10 transition-colors"></div>
+<div class="flex items-center gap-3 mb-4">
+<div class="w-10 h-10 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center">
+<span class="material-symbols-outlined">inventory_2</span>
+</div>
+<span class="font-title-sm text-sm text-on-surface-variant">Total Stok Keseluruhan</span>
+</div>
+<div class="flex items-baseline gap-2">
+<span class="font-headline-md text-[32px] text-on-surface">1,000</span>
+<span class="font-body-md text-on-surface-variant">Tabung</span>
+</div>
+</div>
+<div class="bg-surface-container-lowest p-stack-md rounded-xl shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
+<div class="absolute -right-8 -top-8 w-24 h-24 bg-tertiary/5 rounded-full blur-xl group-hover:bg-tertiary/10 transition-colors"></div>
+<div class="flex items-center gap-3 mb-4">
+<div class="w-10 h-10 rounded-full bg-tertiary-container text-on-tertiary-container flex items-center justify-center">
+<span class="material-symbols-outlined">trending_up</span>
+</div>
+<span class="font-title-sm text-sm text-on-surface-variant">Daily Obj. Throughput</span>
+</div>
+<div class="flex items-baseline gap-2">
+<span class="font-headline-md text-[32px] text-on-surface">40</span>
+<span class="font-body-md text-on-surface-variant">Tabung/hari</span>
+</div>
+</div>
+<div class="bg-surface-container-lowest p-stack-md rounded-xl shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
+<div class="absolute -right-8 -top-8 w-24 h-24 bg-secondary/5 rounded-full blur-xl group-hover:bg-secondary/10 transition-colors"></div>
+<div class="flex items-center gap-3 mb-4">
+<div class="w-10 h-10 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center">
+<span class="material-symbols-outlined">calendar_today</span>
+</div>
+<span class="font-title-sm text-sm text-on-surface-variant">Covered Days Estimasi</span>
+</div>
+<div class="flex items-baseline gap-2">
+<span class="font-headline-md text-[32px] text-on-surface">10</span>
+<span class="font-body-md text-on-surface-variant">Hari</span>
+</div>
+</div>
+<div class="bg-surface-container-lowest p-stack-md rounded-xl shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
+<div class="absolute -right-8 -top-8 w-24 h-24 bg-green-500/5 rounded-full blur-xl group-hover:bg-green-500/10 transition-colors"></div>
+<div class="flex items-center gap-3 mb-4">
+<div class="w-10 h-10 rounded-full bg-green-100 text-green-700 flex items-center justify-center">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</div>
+<span class="font-title-sm text-sm text-on-surface-variant">Status Area Papua</span>
+</div>
+<div class="flex items-center gap-2 mt-1">
+<span class="px-3 py-1 rounded-full bg-green-100 text-green-800 font-label-caps text-xs uppercase tracking-wider">Aman Tersedia</span>
+</div>
+</div>
+</div>
+<!-- Detailed Monitoring Table -->
+<div class="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden flex flex-col">
+<div class="p-stack-md bg-surface-container-low flex justify-between items-center border-b border-outline-variant/30">
+<h2 class="font-title-sm text-on-surface flex items-center gap-2">
+<span class="material-symbols-outlined text-[20px] text-primary">table_rows</span>
+            Data Inventory &amp; Distribusi Agen
+        </h2>
+<div class="flex gap-2">
+<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#FF69B4]/10 text-[#FF69B4] font-data-tabular text-xs font-semibold"><div class="w-2 h-2 rounded-full bg-[#FF69B4]"></div> 5.5 kg</span>
+<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#0000FF]/10 text-[#0000FF] font-data-tabular text-xs font-semibold"><div class="w-2 h-2 rounded-full bg-[#0000FF]"></div> 12 kg</span>
+<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#FFA500]/10 text-[#FFA500] font-data-tabular text-xs font-semibold"><div class="w-2 h-2 rounded-full bg-[#FFA500]"></div> 50 kg</span>
+</div>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse min-w-[1200px]">
+<thead>
+<tr class="bg-surface-container text-on-surface-variant font-label-caps text-xs uppercase tracking-wider">
+<th class="p-4 font-semibold w-16 text-center">No</th>
+<th class="p-4 font-semibold w-48">Nama Sales Area</th>
+<th class="p-4 font-semibold min-w-[200px]">Stok di Gudang Agen<br><span class="text-[10px] normal-case font-normal">(Berdasarkan Ukuran)</span></th>
+<th class="p-4 font-semibold text-right">5.5kg<br><span class="text-[10px] normal-case font-normal">(Total Wilayah)</span></th>
+<th class="p-4 font-semibold text-right">12kg<br><span class="text-[10px] normal-case font-normal">(Total Wilayah)</span></th>
+<th class="p-4 font-semibold text-right">50kg<br><span class="text-[10px] normal-case font-normal">(Total Wilayah)</span></th>
+<th class="p-4 font-semibold text-right bg-surface-container-high">Total Stok</th>
+<th class="p-4 font-semibold min-w-[180px]">Daily Obj. Throughput</th>
+<th class="p-4 font-semibold text-center">Covered Days</th>
+<th class="p-4 font-semibold text-center">Status Stok</th>
+<th class="p-4 font-semibold">Next Supply</th>
+</tr>
+</thead>
+<tbody class="font-body-md text-sm text-on-surface divide-y divide-outline-variant/20">
+<tr class="hover:bg-surface-container-highest/20 transition-colors group">
+<td class="p-4 text-center font-data-tabular text-on-surface-variant">1</td>
+<td class="p-4 font-medium">Papua</td>
+<td class="p-4">
+<div class="flex flex-col gap-1.5 font-data-tabular text-xs">
+<div class="flex justify-between items-center"><span class="text-on-surface-variant">5.5kg:</span> <span class="font-semibold text-[#FF69B4]">200</span></div>
+<div class="flex justify-between items-center"><span class="text-on-surface-variant">12kg:</span> <span class="font-semibold text-[#0000FF]">150</span></div>
+<div class="flex justify-between items-center"><span class="text-on-surface-variant">50kg:</span> <span class="font-semibold text-[#FFA500]">50</span></div>
+</div>
+</td>
+<td class="p-4 text-right font-data-tabular">300</td>
+<td class="p-4 text-right font-data-tabular">250</td>
+<td class="p-4 text-right font-data-tabular">50</td>
+<td class="p-4 text-right font-data-tabular font-bold text-primary bg-surface-container-lowest group-hover:bg-surface-container-lowest/50">1,000</td>
+<td class="p-4">
+<div class="flex flex-col gap-1.5 font-data-tabular text-xs">
+<div class="flex justify-between items-center"><span class="text-on-surface-variant">5.5kg/hr:</span> <span class="font-medium">20</span></div>
+<div class="flex justify-between items-center"><span class="text-on-surface-variant">12kg/hr:</span> <span class="font-medium">15</span></div>
+<div class="flex justify-between items-center"><span class="text-on-surface-variant">50kg/hr:</span> <span class="font-medium">5</span></div>
+</div>
+</td>
+<td class="p-4 text-center font-data-tabular font-medium">10 Hari</td>
+<td class="p-4 text-center">
+<span class="inline-flex items-center justify-center px-2.5 py-1 rounded-full bg-green-100 text-green-800 font-label-caps text-[10px] uppercase">Aman</span>
+</td>
+<td class="p-4 text-on-surface-variant text-sm whitespace-nowrap">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[16px] text-primary">local_shipping</span>
+                            15 Ags 2026
+                        </div>
+</td>
+</tr>
+<!-- Blank rows for layout stability -->
+<tr class="hover:bg-surface-container-highest/20 transition-colors opacity-40 grayscale">
+<td class="p-4 text-center font-data-tabular text-on-surface-variant">2</td>
+<td class="p-4 font-medium italic">Sorong (Sample)</td>
+<td class="p-4">-</td>
+<td class="p-4 text-right">-</td>
+<td class="p-4 text-right">-</td>
+<td class="p-4 text-right">-</td>
+<td class="p-4 text-right">-</td>
+<td class="p-4">-</td>
+<td class="p-4 text-center">-</td>
+<td class="p-4 text-center">-</td>
+<td class="p-4">-</td>
+</tr>
+<tr class="hover:bg-surface-container-highest/20 transition-colors opacity-40 grayscale border-b-transparent">
+<td class="p-4 text-center font-data-tabular text-on-surface-variant">3</td>
+<td class="p-4 font-medium italic">Manokwari (Sample)</td>
+<td class="p-4">-</td>
+<td class="p-4 text-right">-</td>
+<td class="p-4 text-right">-</td>
+<td class="p-4 text-right">-</td>
+<td class="p-4 text-right">-</td>
+<td class="p-4">-</td>
+<td class="p-4 text-center">-</td>
+<td class="p-4 text-center">-</td>
+<td class="p-4">-</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<!-- Decorative Context Image -->
+</div></main></div>
+<div class="fixed inset-0 z-[100] flex items-center justify-center bg-on-surface/40 backdrop-blur-sm hidden" id="update-modal">
+<div class="bg-surface-container-lowest w-full max-w-md rounded-xl shadow-md border border-outline-variant/30 overflow-hidden flex flex-col">
+<!-- Header -->
+<div class="px-container-padding py-4 border-b border-outline-variant/30 flex items-center justify-between bg-surface-bright">
+<h2 class="font-title-sm text-on-surface">Update Data Harian</h2>
+<button class="p-2 text-on-surface-variant hover:bg-surface-container-high rounded-full transition-colors" onclick="document.getElementById('update-modal').classList.add('hidden')">
+<span class="material-symbols-outlined text-[20px]">close</span>
+</button>
+</div>
+<!-- Segmented Control -->
+<div class="p-container-padding pb-0">
+<div class="flex bg-surface-container-low p-1 rounded-lg border border-outline-variant/20">
+<button class="flex-1 py-2 text-sm font-semibold rounded-md transition-all bg-primary text-on-primary shadow-sm" id="tab-restock" onclick="showTab('restock')">Isi Ulang Stok</button>
+<button class="flex-1 py-2 text-sm font-semibold transition-all text-on-surface-variant hover:text-on-surface" id="tab-daily" onclick="showTab('daily')">Update Stok Harian</button>
+</div>
+</div>
+<!-- Form Content -->
+<div class="p-container-padding space-y-4">
+<div class="space-y-1">
+<label class="font-label-caps text-on-surface-variant uppercase">Total Sisa Stok (Tabung)</label>
+<input class="w-full px-4 py-3 rounded-lg border border-outline-variant/30 bg-surface-bright focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all text-on-surface" placeholder="0" type="number">
+</div>
+<div class="space-y-1 block" id="fields-restock">
+<label class="font-label-caps text-on-surface-variant uppercase">Tanggal Realisasi</label>
+<div class="relative">
+<input class="w-full px-4 py-3 rounded-lg border border-outline-variant/30 bg-surface-bright focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all text-on-surface" type="date">
+<span class="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none">calendar_today</span>
+</div>
+</div>
+<div class="space-y-4 hidden" id="fields-daily">
+<div class="space-y-1">
+<label class="font-label-caps text-on-surface-variant uppercase">Stok Terjual (Tabung)</label>
+<input class="w-full px-4 py-3 rounded-lg border border-outline-variant/30 bg-surface-bright focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all text-on-surface" placeholder="0" type="number">
+</div>
+<div class="space-y-1">
+<label class="font-label-caps text-on-surface-variant uppercase">Stok Intransit (Tabung)</label>
+<input class="w-full px-4 py-3 rounded-lg border border-outline-variant/30 bg-surface-bright focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all text-on-surface" placeholder="0" type="number">
+</div>
+</div>
+</div>
+<!-- Footer -->
+<div class="px-container-padding py-4 border-t border-outline-variant/30 bg-surface-container-low flex gap-3">
+<button class="flex-1 py-3 rounded-lg font-title-sm text-on-surface-variant hover:bg-surface-container-high transition-all border border-outline-variant/30" onclick="document.getElementById('update-modal').classList.add('hidden')">Batal</button>
+<button class="flex-1 py-3 rounded-lg font-title-sm bg-primary text-on-primary hover:bg-surface-tint transition-all shadow-md active:scale-95">Simpan Perubahan</button>
+</div>
+</div>
+</div>
+<script>
+function showTab(tabName) {
+    const tabRestock = document.getElementById('tab-restock');
+    const tabDaily = document.getElementById('tab-daily');
+    const fieldsRestock = document.getElementById('fields-restock');
+    const fieldsDaily = document.getElementById('fields-daily');
+
+    if (tabName === 'restock') {
+        tabRestock.classList.add('bg-primary', 'text-on-primary', 'shadow-sm');
+        tabRestock.classList.remove('text-on-surface-variant', 'hover:text-on-surface');
+        
+        tabDaily.classList.remove('bg-primary', 'text-on-primary', 'shadow-sm');
+        tabDaily.classList.add('text-on-surface-variant', 'hover:text-on-surface');
+
+        fieldsRestock.classList.remove('hidden');
+        fieldsRestock.classList.add('block');
+        fieldsDaily.classList.add('hidden');
+        fieldsDaily.classList.remove('block');
+    } else {
+        tabDaily.classList.add('bg-primary', 'text-on-primary', 'shadow-sm');
+        tabDaily.classList.remove('text-on-surface-variant', 'hover:text-on-surface');
+        
+        tabRestock.classList.remove('bg-primary', 'text-on-primary', 'shadow-sm');
+        tabRestock.classList.add('text-on-surface-variant', 'hover:text-on-surface');
+
+        fieldsDaily.classList.remove('hidden');
+        fieldsDaily.classList.add('block');
+        fieldsRestock.classList.add('hidden');
+        fieldsRestock.classList.remove('block');
+    }
+}
+</script>
+
+
+</body></html>

@@ -1,0 +1,231 @@
+﻿@page "/"
+@attribute [Authorize]
+@rendermode InteractiveServer
+
+@using Microsoft.AspNetCore.Authorization
+@using StockMonitorTso.Domain.Entities
+@using StockMonitorTso.Infrastructure.Services
+
+@inject IStockDashboardService Dashboard
+
+<PageTitle>Ringkasan Dashboard</PageTitle>
+
+@if (ringkasan is null)
+{
+    <div class="sm-body-md" style="padding:40px 0">Memuat...</div>
+}
+else
+{
+    <div style="display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:20px">
+        <div>
+            <h1 class="sm-display-lg">Ringkasan Operasional</h1>
+            <p class="sm-body-md" style="max-width:660px;margin:4px 0 0">
+                Visibilitas tingkat stok bahan bakar per Sales Area dan status distribusi kritis.
+            </p>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px">
+            <span class="sm-pill sm-pill-neutral" style="gap:8px">
+                <span style="width:9px;height:9px;border-radius:50%;background:var(--sm-success);box-shadow:0 0 8px var(--sm-success)"></span>
+                Live Sync
+            </span>
+            <a class="sm-btn sm-btn-primary sm-btn-sm" href="gudang-wilayah">
+                <span class="material-symbols-outlined" style="font-size:18px">dashboard</span> Buka Gudang Wilayah
+            </a>
+        </div>
+    </div>
+
+    @* Sektor KPI *@
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-bottom:20px">
+
+        <div class="sm-card" style="display:flex;flex-direction:column;gap:10px">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start">
+                <div>
+                    <div class="sm-label-caps" style="opacity:.8">Sektor</div>
+                    <div class="sm-title-sm" style="margin:6px 0 2px">Gas Tabung</div>
+                </div>
+                <div class="sm-kpi-icon" style="color:var(--sm-primary);background:var(--sm-surface-container-highest)">
+                    <span class="material-symbols-outlined">propane</span>
+                </div>
+            </div>
+            <div style="display:flex;align-items:baseline;gap:8px">
+                <span style="font-size:40px;font-weight:700;color:var(--sm-primary)">@ringkasan.Gas.TotalStok.ToString("N0")</span>
+                <span class="sm-body-md">@ringkasan.Gas.Unit</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center">
+                <span class="sm-body-md" style="font-size:12px">@ringkasan.Gas.OutletKritis Outlet Defisit Stok (CD &lt; 3)</span>
+                <span class="sm-pill @StatusClass(ringkasan.Gas.StatusSektor)">@StatusText(ringkasan.Gas.StatusSektor)</span>
+            </div>
+        </div>
+
+        <div class="sm-card" style="display:flex;flex-direction:column;gap:10px">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start">
+                <div>
+                    <div class="sm-label-caps" style="opacity:.8">Sektor</div>
+                    <div class="sm-title-sm" style="margin:6px 0 2px">Minyak Tanah</div>
+                </div>
+                <div class="sm-kpi-icon" style="color:var(--sm-secondary);background:var(--sm-surface-container-highest)">
+                    <span class="material-symbols-outlined">oil_barrel</span>
+                </div>
+            </div>
+            <div style="display:flex;align-items:baseline;gap:8px">
+                <span style="font-size:40px;font-weight:700;color:var(--sm-secondary)">@ringkasan.Minyak.TotalStok.ToString("N0")</span>
+                <span class="sm-body-md">@ringkasan.Minyak.Unit</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center">
+                <span class="sm-body-md" style="font-size:12px">@ringkasan.Minyak.OutletKritis Outlet Defisit Stok (CD &lt; 3)</span>
+                <span class="sm-pill @StatusClass(ringkasan.Minyak.StatusSektor)">@StatusText(ringkasan.Minyak.StatusSektor)</span>
+            </div>
+        </div>
+
+    </div>
+
+    @* Chart tren *@
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:16px;margin-bottom:20px">
+
+        <div class="sm-card">
+            <div class="sm-title-sm" style="display:flex;gap:8px;align-items:center;margin-bottom:12px">
+                <span class="material-symbols-outlined" style="color:var(--sm-primary)">bar_chart</span> Tren Stok Gas Tabung
+            </div>
+            @if (ringkasan.GasChart.Count == 0)
+            {
+                <div class="sm-body-md" style="text-align:center;padding:20px">Belum ada data.</div>
+            }
+            else
+            {
+                <div class="sm-chart">
+                    @foreach (var p in ringkasan.GasChart)
+                    {
+                        <div class="sm-chart-col">
+                            <div class="sm-bars">
+                                <div class="sm-bar sm-bar-current @(p.Critical ? "sm-crit" : "")" style="height:@(Pct(p.Agen, RingkasanMax(ringkasan.GasChart)))%"></div>
+                                <div class="sm-bar sm-bar-target" style="height:@(Pct(p.Outlet, RingkasanMax(ringkasan.GasChart)))%"></div>
+                            </div>
+                            <div class="sm-chart-label @(p.Critical ? "sm-crit-label" : "")">@p.Label</div>
+                        </div>
+                    }
+                </div>
+                <div style="display:flex;justify-content:center;gap:16px;margin-top:12px">
+                    <span class="sm-body-md" style="font-size:12px"><span class="sm-bar" style="display:inline-block;width:14px;height:14px;border-radius:3px;background:var(--sm-primary);vertical-align:middle"></span> Stok Agen</span>
+                    <span class="sm-body-md" style="font-size:12px"><span class="sm-bar" style="display:inline-block;width:14px;height:14px;border-radius:3px;background:var(--sm-surface-container-highest);vertical-align:middle"></span> Stok Outlet</span>
+                </div>
+            }
+        </div>
+
+        <div class="sm-card">
+            <div class="sm-title-sm" style="display:flex;gap:8px;align-items:center;margin-bottom:12px">
+                <span class="material-symbols-outlined" style="color:var(--sm-secondary)">bar_chart</span> Tren Stok Minyak Tanah
+            </div>
+            @if (ringkasan.MinyakChart.Count == 0)
+            {
+                <div class="sm-body-md" style="text-align:center;padding:20px">Belum ada data.</div>
+            }
+            else
+            {
+                <div class="sm-chart">
+                    @foreach (var p in ringkasan.MinyakChart)
+                    {
+                        <div class="sm-chart-col">
+                            <div class="sm-bars">
+                                <div class="sm-bar sm-bar-current @(p.Critical ? "sm-crit" : "")" style="height:@(Pct(p.Agen, RingkasanMax(ringkasan.MinyakChart)))%"></div>
+                                <div class="sm-bar sm-bar-target" style="height:@(Pct(p.Outlet, RingkasanMax(ringkasan.MinyakChart)))%"></div>
+                            </div>
+                            <div class="sm-chart-label @(p.Critical ? "sm-crit-label" : "")">@p.Label</div>
+                        </div>
+                    }
+                </div>
+                <div style="display:flex;justify-content:center;gap:16px;margin-top:12px">
+                    <span class="sm-body-md" style="font-size:12px"><span class="sm-bar" style="display:inline-block;width:14px;height:14px;border-radius:3px;background:var(--sm-secondary);vertical-align:middle"></span> Stok Agen</span>
+                    <span class="sm-body-md" style="font-size:12px"><span class="sm-bar" style="display:inline-block;width:14px;height:14px;border-radius:3px;background:var(--sm-surface-container-highest);vertical-align:middle"></span> Stok Outlet</span>
+                </div>
+            }
+        </div>
+
+    </div>
+
+    @* Metrik Minyak Tanah *@
+    <div class="sm-table-wrap">
+        <div class="sm-label-caps" style="padding:14px var(--sm-pad);border-bottom:1px solid var(--sm-outline-variant);display:flex;justify-content:space-between;align-items:center">
+            <span style="display:flex;gap:8px;align-items:center"><span class="material-symbols-outlined" style="color:var(--sm-secondary)">oil_barrel</span> Metrik Minyak Tanah</span>
+            <a href="gudang-wilayah" style="color:var(--sm-primary);text-transform:none;letter-spacing:0">Lihat Semua</a>
+        </div>
+        <div style="overflow-x:auto">
+            <table class="sm-table">
+                <thead>
+                    <tr>
+                        <th>No.</th>
+                        <th>Nama Sales Area</th>
+                        <th>Realisasi Tanggal</th>
+                        <th class="num">Sisa Stok Agen</th>
+                        <th class="num">Sisa Outlet</th>
+                        <th class="num">Terjual</th>
+                        <th class="num">Intransit</th>
+                        <th>Status</th>
+                        <th>Keterangan</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @{ var i = 1; }
+                    @foreach (var row in ringkasan.MetrikMinyak)
+                    {
+                        <tr>
+                            <td>@(i++)</td>
+                            <td>@row.Wilayah.DisplayName()</td>
+                            <td>@row.Tanggal.ToString("dd MMM yyyy")</td>
+                            <td class="num">@FormatKl(row.StokAgen)</td>
+                            <td class="num">@FormatKl(row.StokOutlet)</td>
+                            <td class="num">@FormatKl(row.StokHabisTerjual)</td>
+                            <td class="num">@FormatKl(row.StokIntransit)</td>
+                            <td><span class="sm-pill @StatusClass(Worst(row.StatusAgen, row.StatusOutlet))">@StatusText(Worst(row.StatusAgen, row.StatusOutlet))</span></td>
+                            <td>@row.Keterangan</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+@code {
+    private RingkasanOperasional? ringkasan;
+
+    protected override async Task OnInitializedAsync()
+    {
+        ringkasan = await Dashboard.GetRingkasanAsync();
+    }
+
+    private static string FormatKl(decimal? value) => value?.ToString("0.###") ?? "-";
+
+    private static decimal RingkasanMax(IReadOnlyList<ChartPoint> points)
+    {
+        var m = points.Count == 0 ? 0m : points.Max(p => Math.Max(p.Agen, p.Outlet));
+        return m <= 0 ? 1m : m;
+    }
+
+    private static int Pct(decimal value, decimal max) => Math.Max(2, (int)Math.Round(value / max * 100));
+
+    private static string StatusClass(Status? s) => s switch
+    {
+        Status.Kritis => "sm-pill-danger",
+        Status.Warning => "sm-pill-warning",
+        Status.Aman => "sm-pill-success",
+        _ => "sm-pill-neutral",
+    };
+
+    private static string StatusText(Status? s) => s?.DisplayName() ?? "-";
+
+    private static Status? Worst(Status? a, Status? b)
+    {
+        var list = new[] { a, b }.Where(x => x.HasValue).Select(x => x!.Value).ToList();
+        if (list.Contains(Status.Kritis))
+        {
+            return Status.Kritis;
+        }
+
+        if (list.Contains(Status.Warning))
+        {
+            return Status.Warning;
+        }
+
+        return list.FirstOrDefault();
+    }
+}
