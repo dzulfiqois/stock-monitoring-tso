@@ -37,3 +37,17 @@ logs/
 
 # Secrets / local env
 .env
+
+# --- branch 'apps': hanya aplikasi. Non-aplikasi di-ignore. ---
+docs/
+stitch_dashboard_monitoring_stok_migas/
+DESIGN_REFERENCES.html
+Monitoring Tabung RPM(1).xlsx
+note
+workspace.md
+persona_template.bak
+USER_REQUIREMENTS.md.backup
+
+# Markdown/SPec di root (plan, agen, spec) — bukan bagian aplikasi
+*.md
+!src/**/*.md
