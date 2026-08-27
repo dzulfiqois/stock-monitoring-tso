@@ -247,6 +247,87 @@ public sealed record AgenDetail
     public IReadOnlyList<StockTransactionView> Transactions { get; init; } = new List<StockTransactionView>();
 }
 
+public sealed record OutletProductTarget
+{
+    public required Produk Produk { get; init; }
+
+    public int StokEntitasId { get; init; }
+}
+
+public sealed record OutletTransferTargetRow
+{
+    public required int OutletId { get; init; }
+
+    public required string Nama { get; init; }
+
+    public IReadOnlyList<OutletProductTarget> Products { get; init; } = new List<OutletProductTarget>();
+}
+
+public sealed record OutletInventarisRow
+{
+    public required int OutletId { get; init; }
+
+    public required string Nama { get; init; }
+
+    public DateTime TanggalDaftar { get; init; }
+
+    public decimal TotalStok { get; init; }
+
+    public int JumlahProduk { get; init; }
+
+    public Status? StatusTerburuk { get; init; }
+}
+
+public sealed record OutletProdukRow
+{
+    public required Produk Produk { get; init; }
+
+    public int StokEntitasId { get; init; }
+
+    public DateTime TanggalStokAwal { get; init; }
+
+    public decimal Stok { get; init; }
+
+    public decimal DOT { get; init; }
+
+    public decimal? Cd { get; init; }
+
+    public Status? Status { get; init; }
+
+    public DateTime? ExhaustDate { get; init; }
+
+    public decimal? StokHabisTerjual { get; init; }
+
+    public decimal? StokIntransit { get; init; }
+}
+
+public sealed record OutletDetail
+{
+    public required int OutletId { get; init; }
+
+    public required string Nama { get; init; }
+
+    public required int AgenId { get; init; }
+
+    public required Wilayah Wilayah { get; init; }
+
+    public DateTime TanggalDaftar { get; init; }
+
+    public decimal TotalStok { get; init; }
+
+    public decimal TotalDot { get; init; }
+
+    public decimal? CdTerburuk { get; init; }
+
+    public Status? StatusArea { get; init; }
+
+    public DateTime? ExhaustTerdekat { get; init; }
+
+    public IReadOnlyList<OutletProdukRow> Rows { get; init; } = new List<OutletProdukRow>();
+
+    public IReadOnlyList<StockTransactionView> Transactions { get; init; } = new List<StockTransactionView>();
+}
+
 public sealed record StockTransactionView
 {
     public DateTime Tanggal { get; init; }
@@ -328,4 +409,10 @@ public interface IStockDashboardService
     Task<AgenDetail?> GetAgenDetailAsync(int agenId, CancellationToken ct = default);
 
     Task<IReadOnlyList<AgenTransferTargetRow>> GetAgenTransferTargetsAsync(Wilayah wilayah, CancellationToken ct = default);
+
+    Task<IReadOnlyList<OutletInventarisRow>> GetOutletInventarisAsync(int agenId, CancellationToken ct = default);
+
+    Task<OutletDetail?> GetOutletDetailAsync(int outletId, CancellationToken ct = default);
+
+    Task<IReadOnlyList<OutletTransferTargetRow>> GetOutletTransferTargetsAsync(int agenId, CancellationToken ct = default);
 }

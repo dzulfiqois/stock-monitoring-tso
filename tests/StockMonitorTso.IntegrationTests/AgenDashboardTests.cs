@@ -46,12 +46,17 @@ public class AgenDashboardTests : IClassFixture<TestWebApplicationFactory>
                     continue;
                 }
 
-                // Gudang menyimpan 50%; sisanya 50% dialihkan ke agen (Σ agen == sisa gudang).
+                // Gudang 50% asli; agen menyimpan 25% (50% gudang → 50% ke outlet); outlet 25%.
                 var agenRows = await db.StokEntitas
                     .Where(e => e.Wilayah == wilayah && e.Produk == produk && e.Tier == Tier.Agen && !e.IsDeleted)
                     .ToListAsync();
+                var outletRows = await db.StokEntitas
+                    .Where(e => e.Wilayah == wilayah && e.Produk == produk && e.Tier == Tier.Outlet && !e.IsDeleted)
+                    .ToListAsync();
                 var agenStok = agenRows.Sum(e => e.Stok);
-                agenStok.Should().Be(gudang.Stok, $"{wilayah}/{produk}: 50% di gudang, 50% di agen");
+                var outletStok = outletRows.Sum(e => e.Stok);
+                agenStok.Should().Be(gudang.Stok * 0.5m, $"{wilayah}/{produk}: agen 50% dari gudang setelah outlet split");
+                outletStok.Should().Be(agenStok, $"{wilayah}/{produk}: outlet 50% dari agen");
             }
         }
     }

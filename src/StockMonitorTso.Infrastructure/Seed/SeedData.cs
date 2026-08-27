@@ -32,6 +32,8 @@ public static class SeedData
 
         await SeedMultiRoleUserAsync(userManager, configuration);
 
+        await SeedMitraTsoAsync(services, configuration);
+
         await SeedStockAsync(services, configuration);
     }
 
@@ -46,8 +48,9 @@ public static class SeedData
 
         if (await db.StokEntitas.AnyAsync())
         {
-            // DB lama (data sudah ada): pastikan identitas agen mock ter-seed dari baris Gudang Wilayah.
+            // DB lama (data sudah ada): pastikan identitas agen/outlet mock ter-seed.
             await SeedAgenMockAsync(db);
+            await SeedOutletMockAsync(db);
             return;
         }
 
@@ -95,6 +98,7 @@ public static class SeedData
         await db.SaveChangesAsync();
 
         await SeedAgenMockAsync(db);
+        await SeedOutletMockAsync(db);
     }
 
     /// <summary>
@@ -178,6 +182,155 @@ public static class SeedData
         }
 
         await db.SaveChangesAsync();
+    }
+
+    /// <summary>
+    /// Membuat identitas outlet mock (2 per agen) + baris stok awal dari stok agen.
+    /// Stok tiap outlet = 50% stok agen ÷ 2; DOT = agen DOT ÷ 2. Konservasi: stok agen didebit
+    /// via Transfer. Outlet agregat lama (Tier.Outlet tanpa OutletId) di-soft-delete agar
+    /// dashboard hanya menampilkan outlet bernama. Idempoten.
+    /// </summary>
+    private static async Task SeedOutletMockAsync(ApplicationDbContext db)
+    {
+        if (await db.Outlet.AnyAsync())
+        {
+            return;
+        }
+
+        var agenList = await db.Agen.Where(a => !a.IsDeleted).ToListAsync();
+        if (agenList.Count == 0)
+        {
+            return;
+        }
+
+        // Soft-delete baris outlet agregat lama (jika masih ada) agar tidak double-count.
+        var oldOutletRows = await db.StokEntitas
+            .Where(e => e.Tier == Tier.Outlet && e.OutletId == null && !e.IsDeleted)
+            .ToListAsync();
+        foreach (var r in oldOutletRows)
+        {
+            r.IsDeleted = true;
+        }
+
+        var agenRows = await db.StokEntitas
+            .Where(e => e.Tier == Tier.Agen && !e.IsDeleted)
+            .ToListAsync();
+
+        var pendingTransfer = new List<(StokEntitas AgenRow, StokEntitas OutletRow, decimal Qty)>();
+        var daftarOutlet = new List<Outlet>();
+        foreach (var agen in agenList)
+        {
+            for (var i = 1; i <= OutletMockSeeder.OutletPerAgen; i++)
+            {
+                var outlet = new Outlet
+                {
+                    Nama = OutletMockSeeder.OutletName(agen, i),
+                    AgenId = agen.Id,
+                    Wilayah = agen.Wilayah,
+                    TanggalDaftar = agen.TanggalDaftar,
+                };
+
+                foreach (var produk in ProdukInfo.All)
+                {
+                    var agenRow = agenRows.FirstOrDefault(r => r.AgenId == agen.Id && r.Produk == produk);
+                    if (agenRow is null)
+                    {
+                        continue;
+                    }
+
+                    var stokSplits = AgenMockSeeder.SplitEqual(agenRow.Stok * 0.5m, OutletMockSeeder.OutletPerAgen);
+                    var dotSplits = AgenMockSeeder.SplitEqual(agenRow.DOT, OutletMockSeeder.OutletPerAgen);
+                    var outletRow = new StokEntitas
+                    {
+                        Wilayah = agen.Wilayah,
+                        Produk = produk,
+                        Tier = Tier.Outlet,
+                        TanggalStokAwal = agenRow.TanggalStokAwal,
+                        Stok = stokSplits[i - 1],
+                        DOT = dotSplits[i - 1],
+                    };
+                    outlet.StokEntitas.Add(outletRow);
+                    pendingTransfer.Add((agenRow, outletRow, stokSplits[i - 1]));
+                }
+
+                daftarOutlet.Add(outlet);
+            }
+        }
+
+        db.Outlet.AddRange(daftarOutlet);
+        await db.SaveChangesAsync();
+
+        foreach (var (agenRow, outletRow, qty) in pendingTransfer)
+        {
+            var sebelum = agenRow.Stok;
+            agenRow.Stok -= qty;
+            db.StockTransactions.Add(new StockTransactionRecord
+            {
+                StokEntitasId = agenRow.Id,
+                StokEntitasTujuanId = outletRow.Id,
+                Type = StockTransactionType.Transfer,
+                Kuantitas = qty,
+                Tanggal = agenRow.TanggalStokAwal,
+                Catatan = "Distribusi awal ke outlet (mock 50%)",
+                StokSumberSebelum = sebelum,
+                StokSumberSesudah = agenRow.Stok,
+                StokTujuanSebelum = 0m,
+                StokTujuanSesudah = qty,
+            });
+        }
+
+        await db.SaveChangesAsync();
+    }
+
+    private static async Task SeedMitraTsoAsync(IServiceProvider services, IConfiguration configuration)
+    {
+        var db = services.GetRequiredService<ApplicationDbContext>();
+        var mitraPath = configuration["Seed:MitraPath"] ?? ResolveMitraPath();
+        if (!File.Exists(mitraPath))
+        {
+            return;
+        }
+
+        var mitras = MitraTsoSeeder.Load(mitraPath);
+        foreach (var mitra in mitras)
+        {
+            var existing = await db.MitraTso.FirstOrDefaultAsync(m => m.Id == mitra.Id);
+            if (existing is null)
+            {
+                db.MitraTso.Add(mitra);
+            }
+            else
+            {
+                existing.Nama = mitra.Nama;
+                existing.JenisKendaraan = mitra.JenisKendaraan;
+                existing.KapasitasMax = mitra.KapasitasMax;
+                existing.SatuanKapasitas = mitra.SatuanKapasitas;
+                existing.Rute = mitra.Rute;
+                existing.AreaCoverage = mitra.AreaCoverage;
+                existing.Kontak = mitra.Kontak;
+                existing.Pic = mitra.Pic;
+                existing.Active = mitra.Active;
+                existing.Tarif = mitra.Tarif;
+                existing.SatuanTarif = mitra.SatuanTarif;
+            }
+        }
+
+        await db.SaveChangesAsync();
+    }
+
+    private static string ResolveMitraPath()
+    {
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        for (var i = 0; i < 6 && dir is not null; i++, dir = dir.Parent)
+        {
+            var candidate = Path.Combine(dir.FullName, "seeds", "mitra-tso.json");
+            if (File.Exists(candidate))
+            {
+                return candidate;
+            }
+        }
+
+        return Path.Combine("seeds", "mitra-tso.json");
     }
 
     /// <summary>Cari `Monitoring Tabung RPM(1).xlsx` dari content root ke atas hingga repo root.</summary>

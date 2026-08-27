@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using StockMonitorTso.Infrastructure.Persistence;
 
@@ -10,9 +11,11 @@ using StockMonitorTso.Infrastructure.Persistence;
 namespace StockMonitorTso.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260823140735_AddOutletEntity")]
+    partial class AddOutletEntity
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "8.0.30");
@@ -227,62 +230,6 @@ namespace StockMonitorTso.Infrastructure.Persistence.Migrations
                     b.ToTable("AuditLogs");
                 });
 
-            modelBuilder.Entity("StockMonitorTso.Domain.Entities.MitraTso", b =>
-                {
-                    b.Property<string>("Id")
-                        .HasMaxLength(32)
-                        .HasColumnType("TEXT");
-
-                    b.Property<bool>("Active")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("AreaCoverage")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("JenisKendaraan")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("TEXT");
-
-                    b.Property<decimal>("KapasitasMax")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Kontak")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Nama")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Pic")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Rute")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("SatuanKapasitas")
-                        .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("SatuanTarif")
-                        .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("TEXT");
-
-                    b.Property<decimal>("Tarif")
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("MitraTso");
-                });
-
             modelBuilder.Entity("StockMonitorTso.Domain.Entities.Outlet", b =>
                 {
                     b.Property<int>("Id")
@@ -453,113 +400,6 @@ namespace StockMonitorTso.Infrastructure.Persistence.Migrations
                         .HasFilter("[AgenId] IS NULL AND [OutletId] IS NULL");
 
                     b.ToTable("StokEntitas");
-                });
-
-            modelBuilder.Entity("StockMonitorTso.Domain.Entities.TransportOrder", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("CreatedBy")
-                        .HasColumnType("TEXT");
-
-                    b.Property<decimal>("EstimasiBiayaSnapshot")
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime>("Eta")
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime?>("InvoiceGeneratedAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("InvoiceNo")
-                        .HasColumnType("TEXT");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<decimal>("Kuantitas")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("MitraId")
-                        .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("MitraNamaSnapshot")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("OrderNo")
-                        .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Produk")
-                        .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("TEXT");
-
-                    b.Property<byte[]>("RowVersion")
-                        .IsConcurrencyToken()
-                        .IsRequired()
-                        .HasColumnType("BLOB");
-
-                    b.Property<string>("RuteAsal")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("RuteTujuan")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Satuan")
-                        .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("SatuanTarifSnapshot")
-                        .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime>("TanggalKeberangkatan")
-                        .HasColumnType("TEXT");
-
-                    b.Property<decimal>("TarifSnapshot")
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("UpdatedBy")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("WilayahTujuan")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("OrderNo")
-                        .IsUnique();
-
-                    b.HasIndex("MitraId", "WilayahTujuan", "Produk", "Kuantitas", "TanggalKeberangkatan");
-
-                    b.ToTable("TransportOrders");
                 });
 
             modelBuilder.Entity("StockMonitorTso.Infrastructure.Persistence.ApplicationUser", b =>

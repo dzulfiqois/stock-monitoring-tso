@@ -1,0 +1,279 @@
+@page "/tso/create"
+@page "/tso/{Id:int}/edit"
+@attribute [Authorize]
+@rendermode InteractiveServer
+
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using StockMonitorTso.Domain.Entities
+@using StockMonitorTso.Infrastructure.Services
+
+@inject ITransportOrderService TsoService
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager NavigationManager
+
+<PageTitle>@(IsEdit ? "Update TSO" : "Buat TSO — Wizard")</PageTitle>
+
+<div class="sm-breadcrumb" style="margin-bottom:12px">
+    <a href="tso">Transport Shipping Order</a>
+    <span class="material-symbols-outlined" style="font-size:16px">chevron_right</span>
+    <span style="color:var(--sm-on-surface)">@(IsEdit ? "Update" : "Buat Baru")</span>
+</div>
+
+<div style="display:flex;gap:8px;align-items:center;margin-bottom:16px">
+    @for (int i = 1; i <= 4; i++)
+    {
+        var active = step == i;
+        var done = step > i;
+        <div style="display:flex;align-items:center;gap:8px">
+            <div style="width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;background:@(active ? "var(--sm-primary)" : done ? "var(--sm-success)" : "var(--sm-surface-container-high)");color:@(active || done ? "white" : "var(--sm-on-surface-variant)")">@(done ? "✓" : i.ToString())</div>
+            <span class="sm-label-caps" style="color:@(active ? "var(--sm-primary)" : "var(--sm-on-surface-variant)")">@StepLabel(i)</span>
+        </div>
+        @if (i < 4)
+        {
+            <div style="flex:1;height:2px;background:var(--sm-outline-variant);margin:0 4px"></div>
+        }
+    }
+</div>
+
+<div class="sm-card" style="padding:16px">
+    @if (step == 1)
+    {
+        <h3 class="sm-title-sm">1. Lokasi Gudang & Obyek</h3>
+        <div style="margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div>
+                <label class="sm-label-caps" style="display:block;margin-bottom:6px">Gudang Wilayah Tujuan</label>
+                <select class="sm-filter" style="width:100%" @bind="wilayahTujuan">
+                    @foreach (var w in WilayahInfo.All)
+                    {
+                        <option value="@w">@w.DisplayName()</option>
+                    }
+                </select>
+            </div>
+            <div>
+                <label class="sm-label-caps" style="display:block;margin-bottom:6px">Jenis Material</label>
+                <select class="sm-filter" style="width:100%" @bind="produk">
+                    @foreach (var p in ProdukInfo.All)
+                    {
+                        <option value="@p">@p.DisplayName() (@p.Satuan())</option>
+                    }
+                </select>
+            </div>
+        </div>
+        <div style="margin-top:12px">
+            <label class="sm-label-caps" style="display:block;margin-bottom:6px">Kuantitas</label>
+            <div style="display:flex;align-items:center;gap:8px">
+                <button type="button" class="sm-btn sm-btn-outline sm-btn-sm" @onclick="() => kuantitas = Math.Max(1, kuantitas - 1)">−</button>
+                <input type="number" min="1" step="1" @bind="kuantitas" style="width:120px;padding:8px;border-radius:var(--sm-radius);border:1px solid var(--sm-outline-variant);background:var(--sm-surface-bright)" />
+                <button type="button" class="sm-btn sm-btn-outline sm-btn-sm" @onclick="() => kuantitas++">+</button>
+                <span class="sm-body-md">@produk.Satuan()</span>
+            </div>
+        </div>
+    }
+    else if (step == 2)
+    {
+        <h3 class="sm-title-sm">2. Rute & Jadwal</h3>
+        <div style="margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div>
+                <label class="sm-label-caps" style="display:block;margin-bottom:6px">Rute Asal</label>
+                <input type="text" class="sm-frame" @bind="ruteAsal" style="width:100%;padding:8px;border-radius:var(--sm-radius);border:1px solid var(--sm-outline-variant);background:var(--sm-surface-bright)" />
+            </div>
+            <div>
+                <label class="sm-label-caps" style="display:block;margin-bottom:6px">Rute Tujuan</label>
+                <input type="text" class="sm-frame" @bind="ruteTujuan" style="width:100%;padding:8px;border-radius:var(--sm-radius);border:1px solid var(--sm-outline-variant);background:var(--sm-surface-bright)" />
+            </div>
+            <div>
+                <label class="sm-label-caps" style="display:block;margin-bottom:6px">Tanggal Keberangkatan</label>
+                <input type="date" class="sm-frame" @bind="tanggalBerangkat" style="width:100%;padding:8px;border-radius:var(--sm-radius);border:1px solid var(--sm-outline-variant);background:var(--sm-surface-bright)" />
+            </div>
+            <div>
+                <label class="sm-label-caps" style="display:block;margin-bottom:6px">ETA (otomatis +7 hari)</label>
+                <input type="text" class="sm-frame" value="@tanggalBerangkat.AddDays(7).ToString("dd MMM yyyy")" disabled style="width:100%;padding:8px;border-radius:var(--sm-radius);border:1px solid var(--sm-outline-variant);background:var(--sm-surface-container)" />
+            </div>
+        </div>
+    }
+    else if (step == 3)
+    {
+        <h3 class="sm-title-sm">3. Transporter</h3>
+        <div style="margin-top:12px">
+            <label class="sm-label-caps" style="display:block;margin-bottom:6px">Mitra Transporter</label>
+            <select class="sm-filter" style="width:100%" @bind="selectedMitraId" @bind:after="OnMitraChanged">
+                <option value="">— Pilih Mitra —</option>
+                @foreach (var m in filteredMitra)
+                {
+                    <option value="@m.Id">@m.Nama — @m.JenisKendaraan (Kapasitas @m.KapasitasMax @m.SatuanKapasitas, Tarif @m.Tarif.ToString("N0") / @m.SatuanTarif)</option>
+                }
+            </select>
+        </div>
+        @if (selectedMitra is not null)
+        {
+            <div class="sm-card" style="margin-top:12px;padding:12px;background:var(--sm-surface-container-low)">
+                <div class="sm-label-caps">Standar Harga</div>
+                <div class="sm-title-sm">@selectedMitra.Tarif.ToString("N0") / @selectedMitra.SatuanTarif</div>
+                <div class="sm-label-caps" style="margin-top:8px">Estimasi Biaya</div>
+                <div class="sm-title-sm" style="color:var(--sm-primary)">Rp @estimasiBiaya.ToString("N0")</div>
+                <div class="sm-body-md" style="font-size:12px;color:var(--sm-on-surface-variant)">@kuantitas.ToString("0.##") @produk.Satuan() × @selectedMitra.Tarif.ToString("N0")</div>
+            </div>
+        }
+    }
+    else if (step == 4)
+    {
+        <h3 class="sm-title-sm">4. Ringkasan Proposal</h3>
+        <div style="margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div class="sm-card" style="padding:12px"><span class="sm-label-caps">Gudang Tujuan</span><div class="sm-title-sm">@wilayahTujuan.DisplayName()</div><span class="sm-label-caps">Rute</span><div class="sm-body-md">@ruteAsal → @ruteTujuan</div></div>
+            <div class="sm-card" style="padding:12px"><span class="sm-label-caps">Obyek</span><div class="sm-title-sm">@produk.DisplayName() — @kuantitas.ToString("0.##") @produk.Satuan()</div><span class="sm-label-caps">Jadwal</span><div class="sm-body-md">@tanggalBerangkat.ToString("dd MMM yyyy") → ETA @tanggalBerangkat.AddDays(7).ToString("dd MMM yyyy")</div></div>
+            <div class="sm-card" style="padding:12px"><span class="sm-label-caps">Transporter</span><div class="sm-title-sm">@(selectedMitra?.Nama ?? "-") (@(selectedMitra?.JenisKendaraan ?? "-"))</div><span class="sm-label-caps">Estimasi Biaya</span><div class="sm-title-sm">Rp @estimasiBiaya.ToString("N0")</div></div>
+            <div class="sm-card" style="padding:12px;background:var(--sm-surface-container-low)"><span class="sm-label-caps">Draft Proposal</span><div class="sm-body-md">Order No: @(IsEdit ? existingOrder?.OrderNo ?? "-" : "akan digenerate saat Submit")</div><div class="sm-body-md">Vol Total: @kuantitas @produk.Satuan()</div></div>
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div style="margin-top:12px;padding:10px;border-radius:var(--sm-radius);background:var(--sm-error-container);color:var(--sm-on-error-container)">@errorMessage</div>
+    }
+
+    <div style="display:flex;justify-content:space-between;margin-top:16px">
+        <button class="sm-btn sm-btn-outline sm-btn-sm" @onclick="Prev" disabled="@(step == 1)">Kembali</button>
+        @if (step < 4)
+        {
+            <button class="sm-btn sm-btn-primary sm-btn-sm" @onclick="Next">Lanjutkan</button>
+        }
+        else
+        {
+            <button class="sm-btn sm-btn-primary" @onclick="Submit">
+                <span class="material-symbols-outlined" style="font-size:18px">@(IsEdit ? "save" : "check")</span> @(IsEdit ? "Update" : "Submit & Preview")
+            </button>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public int? Id { get; set; }
+    private bool IsEdit => Id.HasValue;
+    private TransportOrder? existingOrder;
+    private int step = 1;
+    private Wilayah wilayahTujuan = Wilayah.Papua;
+    private Produk produk = Produk.Lpg5_5Kg;
+    private decimal kuantitas = 100;
+    private string ruteAsal = "Pusat";
+    private string ruteTujuan = "Gudang Wilayah Papua";
+    private DateTime tanggalBerangkat = DateTime.Today.AddDays(1);
+    private string? selectedMitraId;
+    private MitraTso? selectedMitra;
+    private decimal estimasiBiaya;
+    private string? errorMessage;
+    private List<MitraTso> allMitra = new();
+    private List<MitraTso> filteredMitra => allMitra.Where(m => m.AreaCoverage.Contains(wilayahTujuan.DisplayName())).ToList();
+
+    private string StepLabel(int i) => i switch { 1 => "Tujuan & Obyek", 2 => "Rute & Jadwal", 3 => "Transporter", 4 => "Ringkasan", _ => "" };
+
+    protected override async Task OnInitializedAsync()
+    {
+        allMitra = (await TsoService.ListMitraAsync()).ToList();
+        if (IsEdit && Id.HasValue)
+        {
+            existingOrder = await TsoService.GetAsync(Id.Value);
+            if (existingOrder is not null)
+            {
+                wilayahTujuan = existingOrder.WilayahTujuan;
+                produk = existingOrder.Produk;
+                kuantitas = existingOrder.Kuantitas;
+                ruteAsal = existingOrder.RuteAsal;
+                ruteTujuan = existingOrder.RuteTujuan;
+                tanggalBerangkat = existingOrder.TanggalKeberangkatan;
+                selectedMitraId = existingOrder.MitraId;
+                selectedMitra = allMitra.FirstOrDefault(m => m.Id == selectedMitraId);
+                UpdateEstimasi();
+            }
+        }
+        else
+        {
+            ruteTujuan = $"Gudang Wilayah {wilayahTujuan.DisplayName()}";
+        }
+    }
+
+    private void OnMitraChanged()
+    {
+        selectedMitra = allMitra.FirstOrDefault(m => m.Id == selectedMitraId);
+        UpdateEstimasi();
+    }
+
+    private void UpdateEstimasi()
+    {
+        if (selectedMitra is not null)
+        {
+            estimasiBiaya = selectedMitra.Tarif * kuantitas;
+        }
+        else
+        {
+            estimasiBiaya = 0;
+        }
+    }
+
+    private void Next()
+    {
+        errorMessage = null;
+        if (step == 1)
+        {
+            if (kuantitas <= 0) { errorMessage = "Kuantitas harus > 0."; return; }
+            ruteTujuan = $"Gudang Wilayah {wilayahTujuan.DisplayName()}";
+        }
+        if (step == 2)
+        {
+            if (tanggalBerangkat.Date < DateTime.Today) { errorMessage = "Tanggal Keberangkatan tidak boleh lampau."; return; }
+        }
+        if (step == 3)
+        {
+            if (string.IsNullOrEmpty(selectedMitraId)) { errorMessage = "Pilih Mitra transporter."; return; }
+            UpdateEstimasi();
+        }
+        if (step < 4) step++;
+    }
+
+    private void Prev()
+    {
+        errorMessage = null;
+        if (step > 1) step--;
+    }
+
+    private async Task Submit()
+    {
+        errorMessage = null;
+        var state = await AuthStateProvider.GetAuthenticationStateAsync();
+        try
+        {
+            if (IsEdit && Id.HasValue)
+            {
+                var req = new UpdateTransportOrderRequest
+                {
+                    MitraId = selectedMitraId!,
+                    WilayahTujuan = wilayahTujuan,
+                    Produk = produk,
+                    Kuantitas = kuantitas,
+                    TanggalKeberangkatan = tanggalBerangkat,
+                    RuteAsal = ruteAsal,
+                    RuteTujuan = ruteTujuan,
+                    RowVersion = existingOrder!.RowVersion,
+                };
+                var updated = await TsoService.UpdateAsync(state.User, Id.Value, req);
+                NavigationManager.NavigateTo($"tso/{updated.Id}");
+            }
+            else
+            {
+                var req = new CreateTransportOrderRequest
+                {
+                    MitraId = selectedMitraId!,
+                    WilayahTujuan = wilayahTujuan,
+                    Produk = produk,
+                    Kuantitas = kuantitas,
+                    TanggalKeberangkatan = tanggalBerangkat,
+                    RuteAsal = ruteAsal,
+                    RuteTujuan = ruteTujuan,
+                };
+                var order = await TsoService.CreateAsync(state.User, req);
+                NavigationManager.NavigateTo($"tso/{order.Id}");
+            }
+        }
+        catch (Exception ex) { errorMessage = ex.Message; }
+    }
+}

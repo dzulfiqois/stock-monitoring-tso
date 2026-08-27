@@ -56,6 +56,9 @@ You also tend to criticize hows a code written in terms of application's securit
 - **Identitas Agen** (party bernama, 2–3 per Gudang Wilayah; gran. stok = Agen×Produk):
   Create/Update = **Superadmin+Supervisi**; Delete = **Superadmin only**. Auto-create baris stok
   per produk (0) saat agen dibuat.
+- **Identitas Outlet** (party bernama, 2 per Agen, one-to-many tanpa limit; gran. stok = Outlet×Produk):
+  Create/Update = **Superadmin+Supervisi**; Delete = **Superadmin only**. Auto-create baris stok
+  per produk (0) saat outlet dibuat.
 
 ## Init steps
 1. `git init` + `.gitignore` .NET 8.

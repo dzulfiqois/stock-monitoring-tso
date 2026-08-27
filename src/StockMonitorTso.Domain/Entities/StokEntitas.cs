@@ -23,6 +23,10 @@ public sealed class StokEntitas
 
     public Agen? Agen { get; set; }
 
+    public int? OutletId { get; set; }
+
+    public Outlet? Outlet { get; set; }
+
     /// <summary>Realisasi Tanggal / Tanggal Stok Awal — tanggal snapshot (same-day, STOCK §2.a).</summary>
     public DateTime TanggalStokAwal { get; set; }
 

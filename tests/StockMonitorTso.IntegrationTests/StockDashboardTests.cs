@@ -35,13 +35,13 @@ public class StockDashboardTests : IClassFixture<TestWebApplicationFactory>
         var rows = await dashboard.GetLpgRowsAsync();
         var row = rows.First(r => r.Wilayah == Wilayah.PapuaBaratDaya && r.Produk == Produk.Lpg5_5Kg);
 
-        // Excel sheet "Agen 16.06.26": stok 1803, DOT 123. Distribusi awal agen (mock 50%)
-        // memindahkan 50% stok dari Gudang Wilayah ke agen → gudang menyimpan 901.5.
+        // Excel sheet "Agen 16.06.26": stok 1803, DOT 123. Distribusi awal: gudang 901.5 (50%),
+        // agen 450.75 (50% dari gudang → 25% asli), outlet 450.75 (50% dari agen).
         row.StokGudang.Should().Be(901.5m);
         row.DotGudang.Should().Be(123);
         row.CdGudang.Should().BeApproximately(901.5m / 123m, 0.01m);
         row.StatusGudang.Should().Be(Status.Aman);
-        row.StokAgen.Should().Be(901.5m);
+        row.StokAgen.Should().Be(450.75m);
     }
 
     [Fact]
@@ -53,13 +53,13 @@ public class StockDashboardTests : IClassFixture<TestWebApplicationFactory>
         var rows = await dashboard.GetLpgRowsAsync();
         var row = rows.First(r => r.Wilayah == Wilayah.PapuaTengah && r.Produk == Produk.Lpg12Kg);
 
-        // Excel sheet "Agen 16.06.26": stok 5654, DOT 434. Setelah split 50% → gudang 2827,
-        // CD = 2827/434 ≈ 6.51 (Warning).
+        // Excel sheet "Agen 16.06.26": stok 5654, DOT 434. Setelah split: gudang 2827,
+        // agen 1413.5 (50% gudang), CD = 2827/434 ≈ 6.51 (Warning).
         row.StokGudang.Should().Be(2827);
         row.DotGudang.Should().Be(434);
         row.CdGudang.Should().BeApproximately(2827m / 434m, 0.01m);
         row.StatusGudang.Should().Be(Status.Warning);
-        row.StokAgen.Should().Be(2827);
+        row.StokAgen.Should().Be(1413.5m);
     }
 
     [Fact]
@@ -99,9 +99,9 @@ public class StockDashboardTests : IClassFixture<TestWebApplicationFactory>
         var detail = await dashboard.GetLpgDetailAsync(Wilayah.Papua);
 
         detail.Should().NotBeNull();
-        detail!.Rows.Should().HaveCount(6); // 3 ukuran × (Gudang Wilayah + Outlet)
+        detail!.Rows.Should().HaveCount(3); // 3 ukuran × Gudang Wilayah (outlet disembunyikan — via agen→outlet)
         detail.Rows.Select(r => r.Produk).Should().Contain(new[] { Produk.Lpg5_5Kg, Produk.Lpg12Kg, Produk.Lpg50Kg });
-        detail.Rows.Select(r => r.Tier).Should().Contain(new[] { Tier.GudangWilayah, Tier.Outlet });
+        detail.Rows.Select(r => r.Tier).Should().OnlyContain(t => t == Tier.GudangWilayah);
         detail.Rows.Should().OnlyContain(r => r.StokEntitasId > 0);
     }
 }

@@ -1,4 +1,4 @@
-@page "/agen/{AgenId:int}"
+@page "/outlet/{OutletId:int}"
 @attribute [Authorize]
 @rendermode InteractiveServer
 
@@ -9,11 +9,9 @@
 
 @inject IStockDashboardService Dashboard
 @inject IStockWriteService StockWrite
-@inject IOutletService OutletService
 @inject AuthenticationStateProvider AuthStateProvider
-@inject NavigationManager NavigationManager
 
-<PageTitle>Detail Agen</PageTitle>
+<PageTitle>Detail Outlet</PageTitle>
 
 @if (detail is null)
 {
@@ -26,66 +24,34 @@ else
             <div class="sm-breadcrumb">
                 <a href="gudang-wilayah">Gudang Wilayah</a>
                 <span class="material-symbols-outlined" style="font-size:16px">chevron_right</span>
-                <a href="wilayah/@detail.Wilayah/agen">Agen @detail.Wilayah.DisplayName()</a>
+                <a href="agen/@detail.AgenId">@detail.Nama</a>
                 <span class="material-symbols-outlined" style="font-size:16px">chevron_right</span>
                 <span style="color:var(--sm-on-surface)">@detail.Nama</span>
             </div>
-            <h1 class="sm-headline-md" style="margin-top:6px">Inventori Agen — @detail.Nama</h1>
-            <p class="sm-body-md" style="margin:4px 0 0">Sales Area @detail.Wilayah.DisplayName() — Realisasi dan pemantauan stok harian.</p>
+            <h1 class="sm-headline-md" style="margin-top:6px">Inventori Outlet — @detail.Nama</h1>
+            <p class="sm-body-md" style="margin:4px 0 0">Agen @detail.AgenId — @detail.Wilayah.DisplayName()</p>
         </div>
         <AuthorizeView Roles="Superadmin,Supervisi">
             <Authorized>
-                <div style="display:flex;gap:10px;align-items:center">
-                    <a class="sm-btn sm-btn-outline" href="/agen/@AgenId/outlet">
-                        <span class="material-symbols-outlined" style="font-size:18px">store</span> Outlet — Lihat
-                    </a>
-                    <button class="sm-btn sm-btn-outline" @onclick="OpenTransferModal">
-                        <span class="material-symbols-outlined" style="font-size:18px">local_shipping</span> Kirim ke Outlet
-                    </button>
-                    <button class="sm-btn sm-btn-primary" @onclick="OpenUpdateModal">
-                        <span class="material-symbols-outlined" style="font-size:18px">sync</span> Update Data Harian
-                    </button>
-                </div>
+                <button class="sm-btn sm-btn-primary" @onclick="OpenUpdateModal">
+                    <span class="material-symbols-outlined" style="font-size:18px">sync</span> Update Data Harian
+                </button>
             </Authorized>
         </AuthorizeView>
     </div>
 
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:20px">
-        <div class="sm-kpi">
-            <span class="sm-label-caps">Total Sisa Stok</span>
-            <div><span class="value">@detail.TotalStok.ToString("N0")</span> <span class="unit">satuan</span></div>
-        </div>
-        <div class="sm-kpi">
-            <span class="sm-label-caps">Daily Obj. Throughput</span>
-            <div><span class="value" style="font-size:26px">@detail.TotalDot.ToString("0.#")</span> <span class="unit">/hari</span></div>
-        </div>
-        <div class="sm-kpi">
-            <span class="sm-label-caps">Covered Days Estimasi</span>
-            <div><span class="value" style="font-size:26px">@(detail.CdTerburuk?.ToString("0.##") ?? "-")</span> <span class="unit">hari</span></div>
-        </div>
-        <div class="sm-kpi @(detail.StatusArea == Status.Kritis ? "sm-kpi-kritis" : "")">
-            <span class="sm-label-caps">Status Area</span>
-            <div><span class="value" style="font-size:26px">@StatusText(detail.StatusArea)</span></div>
-        </div>
+        <div class="sm-kpi"><span class="sm-label-caps">Total Sisa Stok</span><div><span class="value">@detail.TotalStok.ToString("N0")</span> <span class="unit">satuan</span></div></div>
+        <div class="sm-kpi"><span class="sm-label-caps">Daily Obj. Throughput</span><div><span class="value" style="font-size:26px">@detail.TotalDot.ToString("0.#")</span> <span class="unit">/hari</span></div></div>
+        <div class="sm-kpi"><span class="sm-label-caps">Covered Days Estimasi</span><div><span class="value" style="font-size:26px">@(detail.CdTerburuk?.ToString("0.##") ?? "-")</span> <span class="unit">hari</span></div></div>
+        <div class="sm-kpi @(detail.StatusArea == Status.Kritis ? "sm-kpi-kritis" : "")"><span class="sm-label-caps">Status Area</span><div><span class="value" style="font-size:26px">@StatusText(detail.StatusArea)</span></div></div>
     </div>
 
     <div class="sm-table-wrap" style="margin-bottom:20px">
-        <div class="sm-label-caps" style="padding:14px var(--sm-pad);border-bottom:1px solid var(--sm-outline-variant);display:flex;justify-content:space-between;align-items:center">
-            <span>Data Inventory per Produk</span>
-            <span style="text-transform:none;letter-spacing:0">Exhaust terdekat: @(detail.ExhaustTerdekat?.ToString("dd MMM yyyy") ?? "-")</span>
-        </div>
+        <div class="sm-label-caps" style="padding:14px var(--sm-pad);border-bottom:1px solid var(--sm-outline-variant)">Data Inventory per Produk</div>
         <div style="overflow-x:auto">
             <table class="sm-table">
-                <thead>
-                    <tr>
-                        <th>Produk</th>
-                        <th class="num">Stok</th>
-                        <th class="num">DOT</th>
-                        <th class="num">Covered Days</th>
-                        <th>Status</th>
-                        <th>Exhaust</th>
-                    </tr>
-                </thead>
+                <thead><tr><th>Produk</th><th class="num">Stok</th><th class="num">DOT</th><th class="num">Covered Days</th><th>Status</th><th>Exhaust</th></tr></thead>
                 <tbody>
                     @foreach (var row in detail.Rows)
                     {
@@ -104,21 +70,10 @@ else
     </div>
 
     <div class="sm-table-wrap">
-        <div class="sm-label-caps" style="padding:14px var(--sm-pad);border-bottom:1px solid var(--sm-outline-variant)">
-            Log Transaksi Stok
-        </div>
+        <div class="sm-label-caps" style="padding:14px var(--sm-pad);border-bottom:1px solid var(--sm-outline-variant)">Log Transaksi Stok</div>
         <div style="overflow-x:auto">
             <table class="sm-table">
-                <thead>
-                    <tr>
-                        <th>Tanggal</th>
-                        <th>Jenis</th>
-                        <th class="num">Kuantitas</th>
-                        <th>Asal / Tujuan</th>
-                        <th>Catatan</th>
-                        <th class="num">Stok Sesudah</th>
-                    </tr>
-                </thead>
+                <thead><tr><th>Tanggal</th><th>Jenis</th><th class="num">Kuantitas</th><th>Tujuan</th><th>Catatan</th><th class="num">Stok Sesudah</th></tr></thead>
                 <tbody>
                     @if (detail.Transactions.Count == 0)
                     {
@@ -128,14 +83,7 @@ else
                     {
                         @foreach (var t in detail.Transactions)
                         {
-                            <tr>
-                                <td>@t.Tanggal.ToString("dd MMM yyyy")</td>
-                                <td>@t.Type</td>
-                                <td class="num">@t.Kuantitas.ToString("0.###")</td>
-                                <td>@(t.Tujuan ?? "-")</td>
-                                <td>@(t.Catatan ?? "-")</td>
-                                <td class="num">@t.StokSesudah.ToString("0.###")</td>
-                            </tr>
+                            <tr><td>@t.Tanggal.ToString("dd MMM yyyy")</td><td>@t.Type</td><td class="num">@t.Kuantitas.ToString("0.###")</td><td>@(t.Tujuan ?? "-")</td><td>@(t.Catatan ?? "-")</td><td class="num">@t.StokSesudah.ToString("0.###")</td></tr>
                         }
                     }
                 </tbody>
@@ -151,16 +99,13 @@ else
         <div class="sm-modal">
             <div class="sm-modal-header">
                 <h3 class="sm-title-sm" style="margin:0">Update Data Harian</h3>
-                <button class="sm-btn sm-btn-outline sm-btn-sm" @onclick="CloseUpdateModal">
-                    <span class="material-symbols-outlined" style="font-size:18px">close</span>
-                </button>
+                <button class="sm-btn sm-btn-outline sm-btn-sm" @onclick="CloseUpdateModal"><span class="material-symbols-outlined" style="font-size:18px">close</span></button>
             </div>
             <div class="sm-modal-body">
                 <div class="sm-segmented" style="margin-bottom:16px">
                     <button type="button" class="@(updateMode == "restock" ? "active" : "")" @onclick="SetModeRestock">Isi Ulang Stok</button>
                     <button type="button" class="@(updateMode == "daily" ? "active" : "")" @onclick="SetModeDaily">Update Stok Harian</button>
                 </div>
-
                 <div style="margin-bottom:12px">
                     <label class="sm-label-caps" style="display:block;margin-bottom:6px">Produk tujuan</label>
                     <select class="sm-filter" style="width:100%" @bind="selectedProdukIndex">
@@ -170,7 +115,6 @@ else
                         }
                     </select>
                 </div>
-
                 @if (updateMode == "restock")
                 {
                     <div style="margin-bottom:12px">
@@ -247,220 +191,49 @@ else
     </div>
 }
 
-@if (showTransferModal)
-{
-    <div class="sm-modal-backdrop"></div>
-    <div style="position:fixed;inset:0;z-index:120;display:flex;align-items:center;justify-content:center">
-        <div class="sm-modal" style="max-width:520px">
-            <div class="sm-modal-header">
-                <h3 class="sm-title-sm" style="margin:0">Kirim ke Outlet</h3>
-                <button class="sm-btn sm-btn-outline sm-btn-sm" @onclick="CloseTransferModal"><span class="material-symbols-outlined" style="font-size:18px">close</span></button>
-            </div>
-            <div class="sm-modal-body">
-                <div style="margin-bottom:12px">
-                    <label class="sm-label-caps" style="display:block;margin-bottom:6px">Outlet tujuan</label>
-                    <select class="sm-filter" style="width:100%" @bind="selectedOutletIndex">
-                        @for (var i = 0; i < outletTargets.Count; i++)
-                        {
-                            <option value="@i">@outletTargets[i].Nama</option>
-                        }
-                    </select>
-                </div>
-                <div class="sm-label-caps" style="margin-bottom:8px">Kuantitas per jenis material</div>
-                <div style="display:flex;flex-direction:column;gap:10px">
-                    <div style="display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center">
-                        <span class="sm-body-md">LPG 5.5 kg <span style="color:var(--sm-on-surface-variant)">(stok agen: @FormatStok(TransferStok55))</span></span>
-                        <input type="number" min="0" step="1" @bind="transferQty55" style="width:120px;padding:8px;border-radius:var(--sm-radius);border:1px solid var(--sm-outline-variant);background:var(--sm-surface-bright)" />
-                    </div>
-                    <div style="display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center">
-                        <span class="sm-body-md">LPG 12 kg <span style="color:var(--sm-on-surface-variant)">(stok agen: @FormatStok(TransferStok12))</span></span>
-                        <input type="number" min="0" step="1" @bind="transferQty12" style="width:120px;padding:8px;border-radius:var(--sm-radius);border:1px solid var(--sm-outline-variant);background:var(--sm-surface-bright)" />
-                    </div>
-                    <div style="display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center">
-                        <span class="sm-body-md">LPG 50 kg <span style="color:var(--sm-on-surface-variant)">(stok agen: @FormatStok(TransferStok50))</span></span>
-                        <input type="number" min="0" step="1" @bind="transferQty50" style="width:120px;padding:8px;border-radius:var(--sm-radius);border:1px solid var(--sm-outline-variant);background:var(--sm-surface-bright)" />
-                    </div>
-                    <div style="display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center">
-                        <span class="sm-body-md">Minyak Tanah <span style="color:var(--sm-on-surface-variant)">(stok agen: @FormatStok(TransferStokMinyak) KL)</span></span>
-                        <input type="number" min="0" step="0.1" @bind="transferQtyMinyak" style="width:120px;padding:8px;border-radius:var(--sm-radius);border:1px solid var(--sm-outline-variant);background:var(--sm-surface-bright)" />
-                    </div>
-                </div>
-                @if (!string.IsNullOrEmpty(transferMessage))
-                {
-                    <div style="margin:14px 0 0;padding:10px;border-radius:var(--sm-radius);background:var(--sm-error-container);color:var(--sm-on-error-container)">@transferMessage</div>
-                }
-            </div>
-            <div class="sm-modal-footer">
-                <button class="sm-btn sm-btn-outline sm-btn-sm" @onclick="CloseTransferModal">Batal</button>
-                <button class="sm-btn sm-btn-primary sm-btn-sm" @onclick="ConfirmTransfer">Kirim</button>
-            </div>
-        </div>
-    </div>
-}
-
 @code {
-    [Parameter] public int AgenId { get; set; }
-
-    private AgenDetail? detail;
+    [Parameter] public int OutletId { get; set; }
+    private OutletDetail? detail;
     private bool showUpdateModal;
     private string updateMode = "restock";
     private int selectedProdukIndex;
     private decimal restockQty;
     private DateTime restockDate = DateTime.Today;
-    private decimal dailyTerjual55, dailyOpname55, dailyIntransit55;
-    private bool dailyOpnameEnabled55;
-    private decimal dailyTerjual12, dailyOpname12, dailyIntransit12;
-    private bool dailyOpnameEnabled12;
-    private decimal dailyTerjual50, dailyOpname50, dailyIntransit50;
-    private bool dailyOpnameEnabled50;
-    private decimal dailyTerjualMinyak, dailyOpnameMinyak, dailyIntransitMinyak;
-    private bool dailyOpnameEnabledMinyak;
+    private decimal dailyTerjual55, dailyOpname55, dailyIntransit55; private bool dailyOpnameEnabled55;
+    private decimal dailyTerjual12, dailyOpname12, dailyIntransit12; private bool dailyOpnameEnabled12;
+    private decimal dailyTerjual50, dailyOpname50, dailyIntransit50; private bool dailyOpnameEnabled50;
+    private decimal dailyTerjualMinyak, dailyOpnameMinyak, dailyIntransitMinyak; private bool dailyOpnameEnabledMinyak;
     private string? dailyKeterangan;
     private string? formMessage;
 
-    private bool showTransferModal;
-    private List<OutletTransferTargetRow> outletTargets = new();
-    private int selectedOutletIndex;
-    private decimal transferQty55, transferQty12, transferQty50, transferQtyMinyak;
-    private string? transferMessage;
-    private decimal TransferStok55 => detail?.Rows.FirstOrDefault(r => r.Produk == StockMonitorTso.Domain.Entities.Produk.Lpg5_5Kg)?.Stok ?? 0;
-    private decimal TransferStok12 => detail?.Rows.FirstOrDefault(r => r.Produk == StockMonitorTso.Domain.Entities.Produk.Lpg12Kg)?.Stok ?? 0;
-    private decimal TransferStok50 => detail?.Rows.FirstOrDefault(r => r.Produk == StockMonitorTso.Domain.Entities.Produk.Lpg50Kg)?.Stok ?? 0;
-    private decimal TransferStokMinyak => detail?.Rows.FirstOrDefault(r => r.Produk == StockMonitorTso.Domain.Entities.Produk.MinyakTanah)?.Stok ?? 0;
-
-    protected override async Task OnInitializedAsync()
-    {
-        await LoadAsync();
-    }
-
+    protected override async Task OnInitializedAsync() => await LoadAsync();
     private async Task LoadAsync()
     {
-        detail = await Dashboard.GetAgenDetailAsync(AgenId);
-        if (detail is not null)
-        {
-            selectedProdukIndex = 0;
-        }
+        detail = await Dashboard.GetOutletDetailAsync(OutletId);
+        if (detail is not null) selectedProdukIndex = 0;
     }
-
     private void OpenUpdateModal()
     {
         dailyTerjual55 = 0; dailyOpnameEnabled55 = false; dailyOpname55 = 0; dailyIntransit55 = 0;
         dailyTerjual12 = 0; dailyOpnameEnabled12 = false; dailyOpname12 = 0; dailyIntransit12 = 0;
         dailyTerjual50 = 0; dailyOpnameEnabled50 = false; dailyOpname50 = 0; dailyIntransit50 = 0;
         dailyTerjualMinyak = 0; dailyOpnameEnabledMinyak = false; dailyOpnameMinyak = 0; dailyIntransitMinyak = 0;
-        dailyKeterangan = null; formMessage = null;
-        showUpdateModal = true;
+        dailyKeterangan = null; formMessage = null; showUpdateModal = true;
     }
-
     private void SetModeRestock() => updateMode = "restock";
-
     private void SetModeDaily() => updateMode = "daily";
-
-    private void CloseUpdateModal()
-    {
-        showUpdateModal = false;
-        formMessage = null;
-    }
-
-    private async Task OpenTransferModal()
-    {
-        outletTargets = (await Dashboard.GetOutletTransferTargetsAsync(AgenId)).ToList();
-        if (outletTargets.Count == 0)
-        {
-            transferMessage = "Belum ada outlet terdaftar di agen ini.";
-            return;
-        }
-
-        selectedOutletIndex = 0;
-        transferQty55 = 0;
-        transferQty12 = 0;
-        transferQty50 = 0;
-        transferQtyMinyak = 0;
-        transferMessage = null;
-        showTransferModal = true;
-    }
-
-    private void CloseTransferModal()
-    {
-        showTransferModal = false;
-        transferMessage = null;
-    }
-
-    private async Task ConfirmTransfer()
-    {
-        if (outletTargets.Count == 0)
-        {
-            return;
-        }
-
-        var state = await AuthStateProvider.GetAuthenticationStateAsync();
-        var target = outletTargets[selectedOutletIndex];
-        var qty = new Dictionary<StockMonitorTso.Domain.Entities.Produk, decimal>();
-        if (transferQty55 > 0)
-        {
-            qty[StockMonitorTso.Domain.Entities.Produk.Lpg5_5Kg] = transferQty55;
-        }
-
-        if (transferQty12 > 0)
-        {
-            qty[StockMonitorTso.Domain.Entities.Produk.Lpg12Kg] = transferQty12;
-        }
-
-        if (transferQty50 > 0)
-        {
-            qty[StockMonitorTso.Domain.Entities.Produk.Lpg50Kg] = transferQty50;
-        }
-
-        if (transferQtyMinyak > 0)
-        {
-            qty[StockMonitorTso.Domain.Entities.Produk.MinyakTanah] = transferQtyMinyak;
-        }
-
-        try
-        {
-            await OutletService.TransferFromAgenAsync(state.User, AgenId, target.OutletId, qty, catatan: $"Transfer dari Agen {detail?.Nama ?? "-"} ke {target.Nama}");
-            CloseTransferModal();
-            await LoadAsync();
-        }
-        catch (Exception ex)
-        {
-            transferMessage = ex.Message;
-        }
-    }
-
-    private static string FormatStok(decimal value) => value.ToString("N0");
-
+    private void CloseUpdateModal() { showUpdateModal = false; formMessage = null; }
     private async Task SaveUpdate()
     {
-        if (detail is null)
-        {
-            return;
-        }
-
+        if (detail is null) return;
         var state = await AuthStateProvider.GetAuthenticationStateAsync();
-
         if (updateMode == "restock")
         {
             var row = detail.Rows[selectedProdukIndex];
-            if (restockQty <= 0)
-            {
-                return;
-            }
-
-            try
-            {
-                await StockWrite.TransactAsync(state.User, row.StokEntitasId, StockTransactionType.Receive, restockQty, catatan: "Isi ulang stok");
-                CloseUpdateModal();
-                await LoadAsync();
-            }
-            catch (Exception ex)
-            {
-                formMessage = ex.Message;
-            }
-
+            if (restockQty <= 0) return;
+            try { await StockWrite.TransactAsync(state.User, row.StokEntitasId, StockTransactionType.Receive, restockQty, catatan: "Isi ulang stok"); CloseUpdateModal(); await LoadAsync(); } catch (Exception ex) { formMessage = ex.Message; }
             return;
         }
-
         var entries = new List<(StockMonitorTso.Domain.Entities.Produk Produk, decimal Terjual, bool OpEnabled, decimal Opname, decimal Intransit)>
         {
             (StockMonitorTso.Domain.Entities.Produk.Lpg5_5Kg, dailyTerjual55, dailyOpnameEnabled55, dailyOpname55, dailyIntransit55),
@@ -468,59 +241,26 @@ else
             (StockMonitorTso.Domain.Entities.Produk.Lpg50Kg, dailyTerjual50, dailyOpnameEnabled50, dailyOpname50, dailyIntransit50),
             (StockMonitorTso.Domain.Entities.Produk.MinyakTanah, dailyTerjualMinyak, dailyOpnameEnabledMinyak, dailyOpnameMinyak, dailyIntransitMinyak),
         };
-
         try
         {
             foreach (var (produk, terjual, opEnabled, opname, intransit) in entries)
             {
                 var row = detail.Rows.FirstOrDefault(r => r.Produk == produk);
-                if (row is null)
-                {
-                    continue;
-                }
-
+                if (row is null) continue;
                 var perluIntransit = intransit != (row.StokIntransit ?? 0m);
                 var perluKeterangan = !string.IsNullOrWhiteSpace(dailyKeterangan);
                 if (perluIntransit || perluKeterangan)
                 {
-                    await StockWrite.UpdateDetailAsync(state.User, row.StokEntitasId, new UpdateDetailRequest
-                    {
-                        DOT = row.DOT,
-                        TanggalStokAwal = row.TanggalStokAwal,
-                        StokHabisTerjual = row.StokHabisTerjual,
-                        StokIntransit = intransit,
-                        Keterangan = dailyKeterangan,
-                    });
+                    await StockWrite.UpdateDetailAsync(state.User, row.StokEntitasId, new UpdateDetailRequest { DOT = row.DOT, TanggalStokAwal = row.TanggalStokAwal, StokHabisTerjual = row.StokHabisTerjual, StokIntransit = intransit, Keterangan = dailyKeterangan, });
                 }
-
-                if (terjual > 0)
-                {
-                    await StockWrite.TransactAsync(state.User, row.StokEntitasId, StockTransactionType.Issue, terjual, catatan: dailyKeterangan ?? "Stok terjual harian");
-                }
-
-                if (opEnabled && opname != 0)
-                {
-                    await StockWrite.TransactAsync(state.User, row.StokEntitasId, StockTransactionType.Adjust, opname, catatan: $"Opname {dailyKeterangan ?? ""}".Trim());
-                }
+                if (terjual > 0) await StockWrite.TransactAsync(state.User, row.StokEntitasId, StockTransactionType.Issue, terjual, catatan: dailyKeterangan ?? "Stok terjual harian");
+                if (opEnabled && opname != 0) await StockWrite.TransactAsync(state.User, row.StokEntitasId, StockTransactionType.Adjust, opname, catatan: $"Opname {dailyKeterangan ?? ""}".Trim());
             }
-
-            CloseUpdateModal();
-            await LoadAsync();
+            CloseUpdateModal(); await LoadAsync();
         }
-        catch (Exception ex)
-        {
-            formMessage = ex.Message;
-        }
+        catch (Exception ex) { formMessage = ex.Message; }
     }
-
-    private static string StatusText(Status? status) => status switch
-    {
-        Status.Aman => "Aman",
-        Status.Warning => "Warning",
-        Status.Kritis => "Kritis",
-        _ => "-",
-    };
-
+    private static string StatusText(Status? status) => status switch { Status.Aman => "Aman", Status.Warning => "Warning", Status.Kritis => "Kritis", _ => "-", };
     private static MarkupString StatusPill(Status? status)
     {
         var (label, css) = status switch

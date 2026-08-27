@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using StockMonitorTso.Domain.Abstractions;
 using StockMonitorTso.Infrastructure.Persistence;
+using StockMonitorTso.Api.Endpoints;
 using StockMonitorTso.Infrastructure.Seed;
 using StockMonitorTso.Infrastructure.Services;
 using StockMonitorTso.Web.Components;
@@ -56,6 +57,8 @@ builder.Services.AddScoped<IUserClaimsPrincipalFactory<ApplicationUser>, ActiveR
 builder.Services.AddScoped<IAuditLogService, AuditLogService>();
 builder.Services.AddScoped<IUserAdminService, UserAdminService>();
 builder.Services.AddScoped<IAgenService, AgenService>();
+builder.Services.AddScoped<IOutletService, OutletService>();
+builder.Services.AddScoped<ITransportOrderService, TransportOrderService>();
 builder.Services.AddScoped<IStockDashboardService, StockDashboardService>();
 builder.Services.AddScoped<IStockWriteService, StockWriteService>();
 
@@ -92,6 +95,7 @@ app.UseAntiforgery();
 app.MapHealthChecks("/health");
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
+app.MapTsoEndpoints();
 
 // Add additional endpoints required by the Identity /Account Razor components.
 app.MapAdditionalIdentityEndpoints();

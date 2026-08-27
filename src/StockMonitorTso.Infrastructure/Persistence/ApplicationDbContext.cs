@@ -10,6 +10,12 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
 
     public DbSet<Agen> Agen => Set<Agen>();
 
+    public DbSet<Outlet> Outlet => Set<Outlet>();
+
+    public DbSet<MitraTso> MitraTso => Set<MitraTso>();
+
+    public DbSet<TransportOrder> TransportOrders => Set<TransportOrder>();
+
     public DbSet<StokEntitas> StokEntitas => Set<StokEntitas>();
 
     public DbSet<RencanaKedatangan> RencanaKedatangan => Set<RencanaKedatangan>();
@@ -40,6 +46,46 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.HasIndex(e => new { e.Wilayah, e.Nama }).IsUnique();
         });
 
+        builder.Entity<Outlet>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Nama).HasMaxLength(120).IsRequired();
+            entity.Property(e => e.Wilayah).HasConversion<string>().HasMaxLength(64);
+            entity.HasOne(e => e.Agen)
+                .WithMany()
+                .HasForeignKey(e => e.AgenId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasIndex(e => new { e.AgenId, e.Nama }).IsUnique();
+        });
+
+        builder.Entity<MitraTso>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasMaxLength(32);
+            entity.Property(e => e.Nama).HasMaxLength(200).IsRequired();
+            entity.Property(e => e.JenisKendaraan).HasMaxLength(64);
+            entity.Property(e => e.SatuanKapasitas).HasMaxLength(32);
+            entity.Property(e => e.SatuanTarif).HasMaxLength(32);
+        });
+
+        builder.Entity<TransportOrder>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.OrderNo).HasMaxLength(32).IsRequired();
+            entity.HasIndex(e => e.OrderNo).IsUnique();
+            entity.Property(e => e.MitraId).HasMaxLength(32).IsRequired();
+            entity.Property(e => e.MitraNamaSnapshot).HasMaxLength(200);
+            entity.Property(e => e.SatuanTarifSnapshot).HasMaxLength(32);
+            entity.Property(e => e.WilayahTujuan).HasConversion<string>().HasMaxLength(64);
+            entity.Property(e => e.Produk).HasConversion<string>().HasMaxLength(32);
+            entity.Property(e => e.Satuan).HasMaxLength(32);
+            entity.Property(e => e.RuteAsal).HasMaxLength(64);
+            entity.Property(e => e.RuteTujuan).HasMaxLength(64);
+            entity.Property(e => e.Status).HasConversion<string>().HasMaxLength(32);
+            entity.Property(e => e.RowVersion).IsConcurrencyToken();
+            entity.HasIndex(e => new { e.MitraId, e.WilayahTujuan, e.Produk, e.Kuantitas, e.TanggalKeberangkatan });
+        });
+
         builder.Entity<StokEntitas>(entity =>
         {
             entity.HasKey(e => e.Id);
@@ -50,12 +96,19 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
                 .WithMany(a => a.StokEntitas)
                 .HasForeignKey(e => e.AgenId)
                 .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.Outlet)
+                .WithMany(o => o.StokEntitas)
+                .HasForeignKey(e => e.OutletId)
+                .OnDelete(DeleteBehavior.Restrict);
             entity.HasIndex(e => new { e.Wilayah, e.Produk, e.Tier })
                 .IsUnique()
-                .HasFilter("[AgenId] IS NULL");
+                .HasFilter("[AgenId] IS NULL AND [OutletId] IS NULL");
             entity.HasIndex(e => new { e.AgenId, e.Produk, e.Tier })
                 .IsUnique()
                 .HasFilter("[AgenId] IS NOT NULL");
+            entity.HasIndex(e => new { e.OutletId, e.Produk, e.Tier })
+                .IsUnique()
+                .HasFilter("[OutletId] IS NOT NULL");
         });
 
         builder.Entity<RencanaKedatangan>(entity =>

@@ -1,0 +1,15 @@
+**/bin/
+**/obj/
+*.db
+*.db-shm
+*.db-wal
+.git/
+.vs/
+Dockerfile
+docker-compose.yml
+.env
+.env.*
+docs/
+stitch_dashboard_monitoring_stok_migas/
+note
+workspace.md

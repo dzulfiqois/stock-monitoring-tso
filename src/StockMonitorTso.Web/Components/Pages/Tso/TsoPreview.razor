@@ -1,0 +1,86 @@
+@page "/tso/{Id:int}"
+@attribute [Authorize]
+@rendermode InteractiveServer
+
+@using Microsoft.AspNetCore.Authorization
+@using StockMonitorTso.Domain.Entities
+@using StockMonitorTso.Infrastructure.Services
+
+@inject ITransportOrderService TsoService
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JS
+
+<PageTitle>Preview TSO</PageTitle>
+
+@if (order is null)
+{
+    <div class="sm-card" style="padding:24px">Order tidak ditemukan.</div>
+}
+else
+{
+    <div class="sm-breadcrumb" style="margin-bottom:12px">
+        <a href="tso">Transport Shipping Order</a>
+        <span class="material-symbols-outlined" style="font-size:16px">chevron_right</span>
+        <span style="color:var(--sm-on-surface)">@order.OrderNo</span>
+    </div>
+    <h1 class="sm-headline-md">Preview Invoice Pengiriman</h1>
+    <p class="sm-body-md" style="margin:4px 0 20px">Ringkasan order yang telah ter-commit (read-only).</p>
+
+    <div class="sm-card" style="padding:16px;margin-bottom:16px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div><span class="sm-label-caps">Mitra TSO</span><div class="sm-title-sm">@order.MitraNamaSnapshot (@order.MitraId)</div></div>
+            <div><span class="sm-label-caps">Gudang Wilayah Tujuan</span><div class="sm-title-sm">@order.RuteTujuan</div></div>
+            <div><span class="sm-label-caps">Jenis Material</span><div class="sm-title-sm">@order.Produk.DisplayName()</div></div>
+            <div><span class="sm-label-caps">Kuantitas + Satuan</span><div class="sm-title-sm">@order.Kuantitas.ToString("0.##") @order.Satuan</div></div>
+            <div><span class="sm-label-caps">Tanggal Keberangkatan</span><div class="sm-title-sm">@order.TanggalKeberangkatan.ToString("dd MMM yyyy")</div></div>
+            <div><span class="sm-label-caps">ETA Estimasi</span><div class="sm-title-sm">@order.Eta.ToString("dd MMM yyyy")</div></div>
+            <div><span class="sm-label-caps">Nomor Order</span><div class="sm-title-sm">@order.OrderNo</div></div>
+            <div><span class="sm-label-caps">Timestamp Generate</span><div class="sm-title-sm">@order.CreatedAt.ToString("yyyy-MM-dd HH:mm")</div></div>
+        </div>
+        <div style="margin-top:12px;display:flex;gap:10px">
+            <span class="sm-pill sm-pill-neutral">Status: @order.Status</span>
+            @if (order.Status == TransportOrderStatus.FlagTertunda)
+            {
+                <span class="sm-pill sm-pill-warning">Dampak stok tertunda — <button class="sm-btn sm-btn-outline sm-btn-sm" @onclick="Resync">Resync</button></span>
+            }
+        </div>
+    </div>
+
+    <div style="display:flex;gap:12px">
+        <button class="sm-btn sm-btn-primary" @onclick="GenerateInvoice">
+            <span class="material-symbols-outlined" style="font-size:18px">picture_as_pdf</span> Generate Draft Invoice
+        </button>
+        <a class="sm-btn sm-btn-outline" href="tso">Kembali ke Daftar</a>
+    </div>
+    @if (!string.IsNullOrEmpty(message))
+    {
+        <div style="margin-top:12px;padding:10px;border-radius:var(--sm-radius);background:var(--sm-error-container);color:var(--sm-on-error-container)">@message</div>
+    }
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+    private TransportOrder? order;
+    private string? message;
+
+    protected override async Task OnInitializedAsync()
+    {
+        order = await TsoService.GetAsync(Id);
+    }
+
+    private async Task GenerateInvoice()
+    {
+        try
+        {
+            var pdf = await TsoService.GenerateInvoiceAsync(Id);
+            var base64 = Convert.ToBase64String(pdf);
+            await JS.InvokeVoidAsync("eval", $"const a=document.createElement('a');a.href='data:application/pdf;base64,{base64}';a.download='DraftInvoice-{order!.OrderNo}.pdf';a.click();");
+        }
+        catch (Exception ex) { message = ex.Message; }
+    }
+
+    private async Task Resync()
+    {
+        try { await TsoService.ResyncStockImpactAsync(Id); order = await TsoService.GetAsync(Id); } catch (Exception ex) { message = ex.Message; }
+    }
+}

@@ -10,7 +10,9 @@ Membangun satu aplikasi web .NET 8 — **Aplikasi Stock Monitor dan TSO** —
 dengan dua modul yang berbagi shell (login + dashboard):
 
 - **Modul Monitoring Stok** (minyak tanah + LPG): tabel stok + kartu ringkasan;
-  CD/Exhaust/Status/MT dihitung per `(Wilayah × Produk × Tier)`; invarian
+  hirarki entitas `Gudang Agen (Warehouse) → Agen → Outlet` (spec §2);
+  CD/Exhaust/Status/MT dihitung per `(Wilayah × Produk × Tier)` untuk Gudang/Outlet
+  dan `(Agen × Produk)` untuk agen bernama (2–3 per Gudang, spec §3.c); invarian
   konservasi stok (debit-kredit atomic saat keberangkatan, same-day intra-region);
   Rencana Kedatangan hingga 3 slot; RBAC 4-role (Superadmin/Operator/Supervisi/Tamu).
 - **Modul Transport Shipping Order (TSO)**: order `Pusat → Gudang Wilayah`
@@ -87,7 +89,9 @@ fase n sebelum fase n−1 hijau. Klarifikasi open question sebelum slice terdamp
 
 ### Phase 2 — Monitoring Stok (read + compute)
 - Entitas: `Wilayah` (7 enum canon), `Produk` (LPG 5.5/12/50 + Minyak Tanah),
-  `Tier` (Agen/Outlet), `StokEntitas` (Wilayah×Produk×Tier, stok, DOT),
+  `Tier` (GudangWilayah, Agen, Outlet) — `GudangWilayah` = `Gudang Agen`/Warehouse (spec §2),
+  `StokEntitas` (Wilayah×Produk×Tier untuk Gudang/Outlet; Agen×Produk untuk agen bernama via `AgenId`),
+  `Agen` (entitas bernama, 2–3 per Gudang, spec §3.c),
   `RencanaKedatangan` (Next Supply, ETA, CD_n, ExhaustDate_n) hingga 3 slot.
 - Domain services:
   - `CD = Stok / DOT` (per Wilayah×Produk×Tier)
@@ -100,13 +104,15 @@ fase n sebelum fase n−1 hijau. Klarifikasi open question sebelum slice terdamp
 - **Done**: unit test formula ≥80%; dashboard menampilkan CD/Status benar dari seed.
 
 ### Phase 3 — CRUD Sales Area + Konservasi
-- Register form (branching objek stok: minyak tanah vs LPG; field sesuai `STOCK §4.c`).
+- Register form (branching objek stok: minyak tanah vs LPG; field sesuai `STOCK §5.c`).
+- Identitas **Agen** (2–3 per Gudang, `AgenId`) & **Outlet** (2 per Agen, `OutletId`, one-to-many tanpa limit) — entitas bernama, stok per `(Agen×Produk)` / `(Outlet×Produk)` (spec §2+§3.c).
 - Update (Superadmin + Supervisi), Delete (Superadmin, soft delete, modal konfirmasi).
 - Invarian konservasi: perubahan stok via service transaksional atomic debit-kredit
   saat keberangkatan (same-day intra-region); tolak overdraft (G3); audit log tiap mutasi.
 - Guardrails G1–G11 & Fallbacks F1–F14 (DOT=0 → N/A, overdraft rejected, ETA lampau,
   snapshot usang, optimistic concurrency, dll).
-- **Done**: integration test — create/update/delete per role sesuai §3; konservasi terjaga;
+- Transfer Gudang→Agen (§5.f) & Agen→Outlet (§5.g): modal "Kirim ke Agen/Outlet" (Superadmin+Supervisi), pilih tujuan + qty per SKU, `Transfer` atomic per SKU.
+- **Done**: integration test — create/update/delete per role sesuai §4; konservasi terjaga;
   overdraft ditolak; recompute otomatis CD/Exhaust/Status.
 
 ### Phase 4 — Modul TSO
@@ -149,6 +155,7 @@ fase n sebelum fase n−1 hijau. Klarifikasi open question sebelum slice terdamp
 - Satuan kanonik: **Tabung** untuk LPG, **Kiloliter** untuk minyak tanah; tolak satuan silang.
 - Generasi invoice **deterministik** (idempoten; no random/timestamp di konten).
 - Audit log wajib tiap aksi mutasi (pihak, role aktif, waktu, nilai sebelum/sesudah).
+- `Tier` = `GudangWilayah` (= `Gudang Agen`/Warehouse, spec §2), `Agen`, `Outlet`; `Agen` bernama 2–3 per Gudang (spec §3.c).
 
 ### 5.4 API
 - `MapGroup` + extension per resource under `/api/*`;
@@ -195,7 +202,7 @@ dotnet run --project src/StockMonitorTso.Web --urls http://0.0.0.0:8080
 | Multi-role switch bug | Claim session-scoped; test switch + idle |
 | PDF non-idempoten | QuestPDF deterministik; test regenerate identical |
 | Lead time variabel Papua/Maluku | ETA estimasi; flag "Terlambat" (F5) |
-| Seed Excel drift | Parse sekali saat seed; formula lock di `STOCK §2.c` |
+| Seed Excel drift | Parse sekali saat seed; formula lock di `STOCK §3.c` |
 
 ## 9. Open Questions
 - Switch PostgreSQL: Phase 5 (default) vs lebih awal?

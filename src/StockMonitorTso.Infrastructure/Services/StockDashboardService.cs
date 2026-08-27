@@ -44,14 +44,16 @@ public sealed class StockDashboardService(ApplicationDbContext db) : IStockDashb
             {
                 var gudang = entities.FirstOrDefault(e => e.Wilayah == wilayah && e.Produk == produk && e.Tier == Tier.GudangWilayah);
                 var agenRows = entities.Where(e => e.Wilayah == wilayah && e.Produk == produk && e.Tier == Tier.Agen).ToList();
-                var outlet = entities.FirstOrDefault(e => e.Wilayah == wilayah && e.Produk == produk && e.Tier == Tier.Outlet);
+                var outletRows = entities.Where(e => e.Wilayah == wilayah && e.Produk == produk && e.Tier == Tier.Outlet).ToList();
 
                 var cdGudang = gudang is null ? null : StockCalculator.CoverageDays(gudang.Stok, gudang.DOT);
                 var stokAgen = agenRows.Sum(r => r.Stok);
                 var dotAgen = agenRows.Sum(r => r.DOT);
                 var cdAgen = StockCalculator.CoverageDays(stokAgen, dotAgen);
-                var cdOutlet = outlet is null ? null : StockCalculator.CoverageDays(outlet.Stok, outlet.DOT);
-                var rencana = (gudang ?? outlet)?.RencanaKedatangan.OrderBy(r => r.Urutan).FirstOrDefault();
+                var stokOutlet = outletRows.Sum(r => r.Stok);
+                var dotOutlet = outletRows.Sum(r => r.DOT);
+                var cdOutlet = StockCalculator.CoverageDays(stokOutlet, dotOutlet);
+                var rencana = (gudang ?? outletRows.FirstOrDefault())?.RencanaKedatangan.OrderBy(r => r.Urutan).FirstOrDefault();
 
                 rows.Add(new LpgDashboardRow
                 {
@@ -68,11 +70,13 @@ public sealed class StockDashboardService(ApplicationDbContext db) : IStockDashb
                     ExhaustAgen = agenRows.Count == 0
                         ? null
                         : StockCalculator.ExhaustDate(agenRows.Min(r => r.TanggalStokAwal), cdAgen),
-                    StokOutlet = outlet?.Stok ?? 0,
-                    DotOutlet = outlet?.DOT ?? 0,
+                    StokOutlet = stokOutlet,
+                    DotOutlet = dotOutlet,
                     CdOutlet = cdOutlet,
                     StatusOutlet = StockCalculator.StatusFor(cdOutlet),
-                    ExhaustOutlet = outlet is null ? null : StockCalculator.ExhaustDate(outlet.TanggalStokAwal, cdOutlet),
+                    ExhaustOutlet = outletRows.Count == 0
+                        ? null
+                        : StockCalculator.ExhaustDate(outletRows.Min(r => r.TanggalStokAwal), cdOutlet),
                     NextSupplyEta = rencana?.ETA,
                 });
             }
@@ -93,25 +97,27 @@ public sealed class StockDashboardService(ApplicationDbContext db) : IStockDashb
         {
             var gudang = entities.FirstOrDefault(e => e.Wilayah == wilayah && e.Tier == Tier.GudangWilayah);
             var agenRows = entities.Where(e => e.Wilayah == wilayah && e.Tier == Tier.Agen).ToList();
-            var outlet = entities.FirstOrDefault(e => e.Wilayah == wilayah && e.Tier == Tier.Outlet);
+            var outletRows = entities.Where(e => e.Wilayah == wilayah && e.Tier == Tier.Outlet).ToList();
 
             var cdGudang = gudang is null ? null : StockCalculator.CoverageDays(gudang.Stok, gudang.DOT);
             var stokAgen = agenRows.Sum(r => r.Stok);
             var dotAgen = agenRows.Sum(r => r.DOT);
             var cdAgen = StockCalculator.CoverageDays(stokAgen, dotAgen);
-            var cdOutlet = outlet is null ? null : StockCalculator.CoverageDays(outlet.Stok, outlet.DOT);
+            var stokOutlet = outletRows.Sum(r => r.Stok);
+            var dotOutlet = outletRows.Sum(r => r.DOT);
+            var cdOutlet = StockCalculator.CoverageDays(stokOutlet, dotOutlet);
 
             rows.Add(new MinyakTanahDashboardRow
             {
                 Wilayah = wilayah,
-                Tanggal = gudang?.TanggalStokAwal ?? outlet?.TanggalStokAwal ?? default,
+                Tanggal = gudang?.TanggalStokAwal ?? outletRows.FirstOrDefault()?.TanggalStokAwal ?? default,
                 StokGudang = gudang?.Stok,
                 CdGudang = cdGudang,
                 StatusGudang = StockCalculator.StatusFor(cdGudang),
                 StokAgen = agenRows.Count == 0 ? null : stokAgen,
                 CdAgen = cdAgen,
                 StatusAgen = StockCalculator.StatusFor(cdAgen),
-                StokOutlet = outlet?.Stok,
+                StokOutlet = outletRows.Count == 0 ? null : stokOutlet,
                 CdOutlet = cdOutlet,
                 StatusOutlet = StockCalculator.StatusFor(cdOutlet),
                 StokHabisTerjual = gudang?.StokHabisTerjual,
@@ -145,11 +151,11 @@ public sealed class StockDashboardService(ApplicationDbContext db) : IStockDashb
             var wilayahEntities = entities.Where(e => e.Wilayah == wilayah).ToList();
             var minyakGudang = wilayahEntities.FirstOrDefault(e => e.Produk == Produk.MinyakTanah && e.Tier == Tier.GudangWilayah);
             var minyakAgenRows = wilayahEntities.Where(e => e.Produk == Produk.MinyakTanah && e.Tier == Tier.Agen).ToList();
-            var minyakOutlet = wilayahEntities.FirstOrDefault(e => e.Produk == Produk.MinyakTanah && e.Tier == Tier.Outlet);
-            if (minyakGudang is not null || minyakAgenRows.Count > 0 || minyakOutlet is not null)
+            var minyakOutletRows = wilayahEntities.Where(e => e.Produk == Produk.MinyakTanah && e.Tier == Tier.Outlet).ToList();
+            if (minyakGudang is not null || minyakAgenRows.Count > 0 || minyakOutletRows.Count > 0)
             {
                 cards.Add(BuildSalesAreaCard(
-                    wilayah, Produk.MinyakTanah, minyakGudang, minyakAgenRows, minyakOutlet, agenByWilayah));
+                    wilayah, Produk.MinyakTanah, minyakGudang, minyakAgenRows, minyakOutletRows, agenByWilayah));
             }
 
             // LPG dikelompokkan menjadi SATU card per wilayah dengan rincian per ukuran (5.5/12/50).
@@ -158,19 +164,19 @@ public sealed class StockDashboardService(ApplicationDbContext db) : IStockDashb
                 Produk = produk,
                 Gudang = wilayahEntities.FirstOrDefault(e => e.Produk == produk && e.Tier == Tier.GudangWilayah),
                 AgenRows = wilayahEntities.Where(e => e.Produk == produk && e.Tier == Tier.Agen).ToList(),
-                Outlet = wilayahEntities.FirstOrDefault(e => e.Produk == produk && e.Tier == Tier.Outlet),
+                OutletRows = wilayahEntities.Where(e => e.Produk == produk && e.Tier == Tier.Outlet).ToList(),
             }).ToList();
-            if (lpgPerSku.Any(x => x.Gudang is not null || x.AgenRows.Count > 0 || x.Outlet is not null))
+            if (lpgPerSku.Any(x => x.Gudang is not null || x.AgenRows.Count > 0 || x.OutletRows.Count > 0))
             {
                 var gudangIds = lpgPerSku.Select(x => x.Gudang?.Id).Where(id => id.HasValue).Select(id => id!.Value);
-                var outletIds = lpgPerSku.Select(x => x.Outlet?.Id).Where(id => id.HasValue).Select(id => id!.Value);
+                var outletIds = lpgPerSku.SelectMany(x => x.OutletRows).Select(o => o.Id);
                 var allAgenRows = lpgPerSku.SelectMany(x => x.AgenRows).ToList();
+                var allOutletRows = lpgPerSku.SelectMany(x => x.OutletRows).ToList();
                 var cdGudangs = lpgPerSku.Select(x => x.Gudang).Where(g => g is not null)
                     .Select(g => StockCalculator.CoverageDays(g!.Stok, g.DOT));
-                var cdOutlets = lpgPerSku.Select(x => x.Outlet).Where(o => o is not null)
-                    .Select(o => StockCalculator.CoverageDays(o!.Stok, o.DOT));
-                var allCd = cdGudangs.Concat(cdOutlets)
-                    .Concat(allAgenRows.Select(r => StockCalculator.CoverageDays(r.Stok, r.DOT)));
+                var cdAgenAll = allAgenRows.Select(r => StockCalculator.CoverageDays(r.Stok, r.DOT));
+                var cdOutletAll = allOutletRows.Select(r => StockCalculator.CoverageDays(r.Stok, r.DOT));
+                var allCd = cdGudangs.Concat(cdAgenAll).Concat(cdOutletAll);
                 var statuses = allCd.Select(StockCalculator.StatusFor)
                     .Where(s => s.HasValue).Select(s => s!.Value).ToList();
 
@@ -178,14 +184,14 @@ public sealed class StockDashboardService(ApplicationDbContext db) : IStockDashb
                 {
                     Wilayah = wilayah,
                     Produk = Produk.Lpg5_5Kg,
-                    Tanggal = lpgPerSku.Select(x => x.Gudang?.TanggalStokAwal ?? x.Outlet?.TanggalStokAwal ?? default)
+                    Tanggal = lpgPerSku.Select(x => x.Gudang?.TanggalStokAwal ?? x.OutletRows.FirstOrDefault()?.TanggalStokAwal ?? default)
                         .Where(d => d != default).DefaultIfEmpty(default).Min(),
                     StokGudang = lpgPerSku.Select(x => x.Gudang?.Stok ?? 0).Sum(),
                     StokAgen = allAgenRows.Sum(r => r.Stok),
-                    StokOutlet = lpgPerSku.Select(x => x.Outlet?.Stok ?? 0).Sum(),
+                    StokOutlet = allOutletRows.Sum(r => r.Stok),
                     TotalStok = lpgPerSku.Select(x => x.Gudang?.Stok ?? 0).Sum()
                         + allAgenRows.Sum(r => r.Stok)
-                        + lpgPerSku.Select(x => x.Outlet?.Stok ?? 0).Sum(),
+                        + allOutletRows.Sum(r => r.Stok),
                     StatusTerburuk = statuses.Count == 0 ? null : WorstStatus(statuses),
                     EntityIds = gudangIds.Concat(outletIds).ToList(),
                     AgenRows = agenByWilayah.TryGetValue(wilayah, out var agens) ? agens : new List<AgenCardRow>(),
@@ -204,13 +210,14 @@ public sealed class StockDashboardService(ApplicationDbContext db) : IStockDashb
         Produk produk,
         StokEntitas? gudang,
         IReadOnlyList<StokEntitas> agenRows,
-        StokEntitas? outlet,
+        IReadOnlyList<StokEntitas> outletRows,
         Dictionary<Wilayah, List<AgenCardRow>> agenByWilayah)
     {
         var cdGudang = gudang is null ? null : StockCalculator.CoverageDays(gudang.Stok, gudang.DOT);
-        var cdOutlet = outlet is null ? null : StockCalculator.CoverageDays(outlet.Stok, outlet.DOT);
-        var statuses = new[] { cdGudang, cdOutlet }
+        var stokOutlet = outletRows.Sum(r => r.Stok);
+        var statuses = new[] { cdGudang }
             .Concat(agenRows.Select(r => StockCalculator.CoverageDays(r.Stok, r.DOT)))
+            .Concat(outletRows.Select(r => StockCalculator.CoverageDays(r.Stok, r.DOT)))
             .Select(StockCalculator.StatusFor)
             .Where(s => s.HasValue)
             .Select(s => s!.Value)
@@ -220,16 +227,16 @@ public sealed class StockDashboardService(ApplicationDbContext db) : IStockDashb
         {
             Wilayah = wilayah,
             Produk = produk,
-            Tanggal = gudang?.TanggalStokAwal ?? outlet?.TanggalStokAwal ?? default,
+            Tanggal = gudang?.TanggalStokAwal ?? outletRows.FirstOrDefault()?.TanggalStokAwal ?? default,
             StokGudang = gudang?.Stok,
             StokAgen = agenRows.Count == 0 ? null : agenRows.Sum(r => r.Stok),
-            StokOutlet = outlet?.Stok,
-            TotalStok = (gudang?.Stok ?? 0) + agenRows.Sum(r => r.Stok) + (outlet?.Stok ?? 0),
+            StokOutlet = outletRows.Count == 0 ? null : stokOutlet,
+            TotalStok = (gudang?.Stok ?? 0) + agenRows.Sum(r => r.Stok) + stokOutlet,
             StatusTerburuk = statuses.Count == 0 ? null : WorstStatus(statuses),
             StokHabisTerjual = gudang?.StokHabisTerjual,
             StokIntransit = gudang?.StokIntransit,
             Keterangan = gudang?.Keterangan,
-            EntityIds = new[] { gudang?.Id, outlet?.Id }.Where(id => id.HasValue).Select(id => id!.Value).ToList(),
+            EntityIds = new[] { gudang?.Id }.Where(id => id.HasValue).Select(id => id!.Value).Concat(outletRows.Select(r => r.Id)).ToList(),
             AgenRows = agenByWilayah.TryGetValue(wilayah, out var agens) ? agens : new List<AgenCardRow>(),
         };
     }
@@ -240,7 +247,7 @@ public sealed class StockDashboardService(ApplicationDbContext db) : IStockDashb
             .AsNoTracking()
             .Include(e => e.RencanaKedatangan)
             .Where(e => e.Wilayah == wilayah && e.Produk == produk && !e.IsDeleted)
-            .Where(e => e.Tier == Tier.GudangWilayah || e.Tier == Tier.Outlet)
+            .Where(e => e.Tier == Tier.GudangWilayah)
             .ToListAsync(ct);
         if (entities.Count == 0)
         {
@@ -270,7 +277,7 @@ public sealed class StockDashboardService(ApplicationDbContext db) : IStockDashb
             .AsNoTracking()
             .Include(e => e.RencanaKedatangan)
             .Where(e => e.Wilayah == wilayah && produkLpg.Contains(e.Produk) && !e.IsDeleted)
-            .Where(e => e.Tier == Tier.GudangWilayah || e.Tier == Tier.Outlet)
+            .Where(e => e.Tier == Tier.GudangWilayah)
             .ToListAsync(ct);
         if (entities.Count == 0)
         {
@@ -424,6 +431,118 @@ public sealed class StockDashboardService(ApplicationDbContext db) : IStockDashb
             {
                 AgenId = agen.Id,
                 Nama = agen.Nama,
+                Products = products,
+            });
+        }
+
+        return result;
+    }
+
+    public async Task<IReadOnlyList<OutletInventarisRow>> GetOutletInventarisAsync(int agenId, CancellationToken ct = default)
+    {
+        var outlets = await db.Outlet.AsNoTracking()
+            .Where(o => o.AgenId == agenId && !o.IsDeleted)
+            .OrderBy(o => o.Nama)
+            .ToListAsync(ct);
+        var rows = await db.StokEntitas.AsNoTracking()
+            .Where(e => e.Tier == Tier.Outlet && !e.IsDeleted)
+            .ToListAsync(ct);
+
+        var result = new List<OutletInventarisRow>();
+        foreach (var outlet in outlets)
+        {
+            var outletRows = rows.Where(r => r.OutletId == outlet.Id).ToList();
+            var statuses = outletRows
+                .Select(r => StockCalculator.StatusFor(StockCalculator.CoverageDays(r.Stok, r.DOT)))
+                .Where(s => s.HasValue).Select(s => s!.Value).ToList();
+            result.Add(new OutletInventarisRow
+            {
+                OutletId = outlet.Id,
+                Nama = outlet.Nama,
+                TanggalDaftar = outlet.TanggalDaftar,
+                TotalStok = outletRows.Sum(r => r.Stok),
+                JumlahProduk = outletRows.Count(r => r.Produk == Produk.MinyakTanah || r.Stok > 0 || r.DOT > 0),
+                StatusTerburuk = statuses.Count == 0 ? null : WorstStatus(statuses),
+            });
+        }
+
+        return result;
+    }
+
+    public async Task<OutletDetail?> GetOutletDetailAsync(int outletId, CancellationToken ct = default)
+    {
+        var outlet = await db.Outlet.AsNoTracking()
+            .FirstOrDefaultAsync(o => o.Id == outletId && !o.IsDeleted, ct);
+        if (outlet is null)
+        {
+            return null;
+        }
+
+        var agen = await db.Agen.AsNoTracking().FirstOrDefaultAsync(a => a.Id == outlet.AgenId, ct);
+        var entities = await db.StokEntitas.AsNoTracking()
+            .Include(e => e.RencanaKedatangan)
+            .Where(e => e.OutletId == outletId && !e.IsDeleted)
+            .ToListAsync(ct);
+
+        var rows = new List<OutletProdukRow>();
+        foreach (var entity in entities.OrderBy(e => e.Produk))
+        {
+            var cd = StockCalculator.CoverageDays(entity.Stok, entity.DOT);
+            rows.Add(new OutletProdukRow
+            {
+                Produk = entity.Produk,
+                StokEntitasId = entity.Id,
+                TanggalStokAwal = entity.TanggalStokAwal,
+                Stok = entity.Stok,
+                DOT = entity.DOT,
+                Cd = cd,
+                Status = StockCalculator.StatusFor(cd),
+                ExhaustDate = StockCalculator.ExhaustDate(entity.TanggalStokAwal, cd),
+                StokHabisTerjual = entity.StokHabisTerjual,
+                StokIntransit = entity.StokIntransit,
+            });
+        }
+
+        var cds = rows.Select(r => r.Cd).Where(c => c.HasValue).Select(c => c!.Value).ToList();
+        var transactions = await BuildTransactionViewsAsync(entities.Select(e => e.Id).ToList(), ct);
+
+        return new OutletDetail
+        {
+            OutletId = outlet.Id,
+            Nama = outlet.Nama,
+            AgenId = outlet.AgenId,
+            Wilayah = outlet.Wilayah,
+            TanggalDaftar = outlet.TanggalDaftar,
+            TotalStok = rows.Sum(r => r.Stok),
+            TotalDot = rows.Sum(r => r.DOT),
+            CdTerburuk = cds.Count == 0 ? null : cds.Min(),
+            StatusArea = StockCalculator.StatusFor(cds.Count == 0 ? null : cds.Min()),
+            ExhaustTerdekat = rows.Select(r => r.ExhaustDate).Where(d => d.HasValue).Select(d => d!.Value).Cast<DateTime?>().DefaultIfEmpty(null).Min(),
+            Rows = rows,
+            Transactions = transactions,
+        };
+    }
+
+    public async Task<IReadOnlyList<OutletTransferTargetRow>> GetOutletTransferTargetsAsync(int agenId, CancellationToken ct = default)
+    {
+        var outlets = await db.Outlet.AsNoTracking()
+            .Where(o => o.AgenId == agenId && !o.IsDeleted)
+            .OrderBy(o => o.Nama)
+            .ToListAsync(ct);
+        var rows = await db.StokEntitas.AsNoTracking()
+            .Where(e => e.Tier == Tier.Outlet && !e.IsDeleted)
+            .ToListAsync(ct);
+
+        var result = new List<OutletTransferTargetRow>();
+        foreach (var outlet in outlets)
+        {
+            var products = rows.Where(r => r.OutletId == outlet.Id)
+                .Select(r => new OutletProductTarget { Produk = r.Produk, StokEntitasId = r.Id })
+                .ToList();
+            result.Add(new OutletTransferTargetRow
+            {
+                OutletId = outlet.Id,
+                Nama = outlet.Nama,
                 Products = products,
             });
         }
