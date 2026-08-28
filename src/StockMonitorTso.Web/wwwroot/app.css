@@ -105,6 +105,28 @@ body {
 /* ---------- App shell ---------- */
 .sm-shell { display: flex; min-height: 100vh; background: var(--sm-background); }
 
+/* ---------- Auth shell (halaman login, tanpa sidebar) ---------- */
+.sm-auth-shell {
+  min-height: 100vh;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--sm-background);
+  padding: 24px;
+}
+.sm-auth-card {
+  width: 100%; max-width: 440px;
+  background: var(--sm-surface-container-lowest);
+  border: 1px solid var(--sm-outline-variant);
+  border-radius: var(--sm-radius-xl);
+  padding: 32px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+}
+.sm-auth-brand {
+  display: flex; gap: 8px; align-items: center;
+  margin-bottom: 20px;
+  color: var(--sm-primary);
+  font-weight: 700; font-size: 16px;
+}
+
 .sm-sidebar {
   width: var(--sm-sidebar-w);
   position: fixed; inset: 0 auto 0 0;

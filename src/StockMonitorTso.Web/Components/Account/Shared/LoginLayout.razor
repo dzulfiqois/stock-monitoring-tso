@@ -1,0 +1,39 @@
+@inherits LayoutComponentBase
+@inject NavigationManager NavigationManager
+
+@if (HttpContext is null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <div class="sm-auth-shell">
+        <div class="sm-auth-card">
+            <div class="sm-auth-brand">
+                <span class="material-symbols-outlined" style="font-size:24px">monitoring</span>
+                <span>Stock Monitor &amp; TSO</span>
+            </div>
+            @Body
+        </div>
+    </div>
+}
+
+<div id="blazor-error-ui">
+    An unhandled error has occurred.
+    <a href="" class="reload">Reload</a>
+    <a class="dismiss">x</a>
+</div>
+
+@code {
+    [CascadingParameter]
+    private HttpContext? HttpContext { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        if (HttpContext is null)
+        {
+            // Identity pages butuh HttpContext untuk mengeset cookie; paksa kembali ke server-render.
+            NavigationManager.Refresh(forceReload: true);
+        }
+    }
+}
