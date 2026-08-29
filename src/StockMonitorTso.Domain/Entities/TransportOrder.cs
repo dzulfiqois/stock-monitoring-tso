@@ -29,11 +29,16 @@ public sealed class TransportOrder
 
     public string RuteTujuan { get; set; } = "";
 
+    /// <summary>Jarak manual (km) — diisi di wizard Step 2 Rute jika SatuanTarif per_kilometer.</summary>
+    public decimal? JarakKm { get; set; }
+
     public Produk Produk { get; set; }
 
     public decimal Kuantitas { get; set; }
 
     public string Satuan { get; set; } = "";
+
+    public ICollection<TransportOrderDetail> Details { get; set; } = new List<TransportOrderDetail>();
 
     public DateTime TanggalKeberangkatan { get; set; }
 

@@ -14,16 +14,31 @@ public sealed class TransportOrderService(
     {
         RequireAnyRole(actor, "Superadmin", "Operator");
 
-        var mitra = await db.MitraTso.FirstOrDefaultAsync(m => m.Id == request.MitraId && m.Active, ct)
+        var mitra = await db.MitraTso.Include(m => m.Tarifs).FirstOrDefaultAsync(m => m.Id == request.MitraId && m.Active, ct)
             ?? throw new KeyNotFoundException($"Mitra TSO '{request.MitraId}' tidak terdaftar.");
         if (!mitra.AreaCoverage.Contains(request.WilayahTujuan.DisplayName(), StringComparer.OrdinalIgnoreCase))
         {
             throw new InvalidOperationException($"Mitra '{mitra.Nama}' tidak melayani wilayah {request.WilayahTujuan.DisplayName()}.");
         }
 
-        if (request.Kuantitas <= 0)
+        var detailsInput = request.Details is not null && request.Details.Count > 0
+            ? request.Details
+            : new[] { new TransportOrderDetailDto { Produk = request.Produk, Kuantitas = request.Kuantitas } };
+
+        foreach (var d in detailsInput)
         {
-            throw new ArgumentOutOfRangeException(nameof(request.Kuantitas), "Kuantitas harus > 0.");
+            if (d.Kuantitas <= 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(d.Kuantitas), "Kuantitas harus > 0.");
+            }
+
+            var tarif = mitra.Tarifs.FirstOrDefault(t => t.Produk == d.Produk);
+            var satuanTarif = tarif?.SatuanTarif ?? mitra.SatuanTarif;
+            ValidateSatuanForProduk(d.Produk, satuanTarif);
+            if (satuanTarif.Contains("kilometer", StringComparison.OrdinalIgnoreCase) && (request.JarakKm is null || request.JarakKm <= 0))
+            {
+                throw new ArgumentException($"JarakKm wajib diisi > 0 untuk satuan '{satuanTarif}' pada produk {d.Produk.DisplayName()}.");
+            }
         }
 
         var today = DateTime.Today;
@@ -32,14 +47,16 @@ public sealed class TransportOrderService(
             throw new ArgumentOutOfRangeException(nameof(request.TanggalKeberangkatan), "Tanggal Keberangkatan tidak boleh mendahului hari ini.");
         }
 
-        // Idempotensi T1/F9: cek duplikat dalam 1 menit terakhir dengan payload sama
+        // Idempotensi T1/F9: cek duplikat dalam 1 menit terakhir (header-level, cukup untuk MVP)
         var windowStart = DateTime.UtcNow.AddMinutes(-1);
+        var primaryForDedup = detailsInput[0];
+        var totalForDedup = detailsInput.Sum(d => d.Kuantitas);
         var duplicate = await db.TransportOrders.AsNoTracking()
             .FirstOrDefaultAsync(o =>
                 o.MitraId == request.MitraId
                 && o.WilayahTujuan == request.WilayahTujuan
-                && o.Produk == request.Produk
-                && o.Kuantitas == request.Kuantitas
+                && o.Produk == primaryForDedup.Produk
+                && o.Kuantitas == totalForDedup
                 && o.TanggalKeberangkatan.Date == request.TanggalKeberangkatan.Date
                 && o.CreatedAt >= windowStart
                 && !o.IsDeleted, ct);
@@ -51,22 +68,43 @@ public sealed class TransportOrderService(
         var orderNo = await GenerateOrderNoAsync(ct);
         var now = DateTime.UtcNow;
         var eta = request.TanggalKeberangkatan.Date.AddDays(7);
-        var satuan = request.Produk.Satuan();
-        var estimasiBiaya = mitra.Tarif * request.Kuantitas;
+        var primary = detailsInput[0];
+        var satuan = primary.Produk.Satuan();
+        decimal totalEstimasi = 0;
+        var detailEntities = new List<TransportOrderDetail>();
+        foreach (var d in detailsInput)
+        {
+            var tarifRow = mitra.Tarifs.FirstOrDefault(t => t.Produk == d.Produk);
+            var tarif = tarifRow?.Tarif ?? mitra.Tarif;
+            var satuanTarif = tarifRow?.SatuanTarif ?? mitra.SatuanTarif;
+            var estimasi = satuanTarif.Contains("kilometer", StringComparison.OrdinalIgnoreCase) && request.JarakKm.HasValue
+                ? tarif * d.Kuantitas * request.JarakKm.Value
+                : tarif * d.Kuantitas;
+            totalEstimasi += estimasi;
+            detailEntities.Add(new TransportOrderDetail
+            {
+                Produk = d.Produk,
+                Kuantitas = d.Kuantitas,
+                TarifSnapshot = tarif,
+                SatuanTarifSnapshot = satuanTarif,
+                EstimasiBiayaSnapshot = estimasi,
+            });
+        }
 
         var order = new TransportOrder
         {
             OrderNo = orderNo,
             MitraId = mitra.Id,
             MitraNamaSnapshot = mitra.Nama,
-            TarifSnapshot = mitra.Tarif,
-            SatuanTarifSnapshot = mitra.SatuanTarif,
-            EstimasiBiayaSnapshot = estimasiBiaya,
+            TarifSnapshot = detailEntities[0].TarifSnapshot,
+            SatuanTarifSnapshot = detailEntities[0].SatuanTarifSnapshot,
+            EstimasiBiayaSnapshot = totalEstimasi,
             WilayahTujuan = request.WilayahTujuan,
             RuteAsal = request.RuteAsal ?? "Pusat",
             RuteTujuan = request.RuteTujuan ?? $"Gudang Wilayah {request.WilayahTujuan.DisplayName()}",
-            Produk = request.Produk,
-            Kuantitas = request.Kuantitas,
+            JarakKm = request.JarakKm,
+            Produk = primary.Produk,
+            Kuantitas = detailsInput.Sum(d => d.Kuantitas),
             Satuan = satuan,
             TanggalKeberangkatan = request.TanggalKeberangkatan.Date,
             Eta = eta,
@@ -75,6 +113,7 @@ public sealed class TransportOrderService(
             CreatedBy = GetEmail(actor),
             InvoiceNo = orderNo,
             RowVersion = Guid.NewGuid().ToByteArray(),
+            Details = detailEntities,
         };
 
         db.TransportOrders.Add(order);
@@ -108,13 +147,13 @@ public sealed class TransportOrderService(
     }
 
     public async Task<TransportOrder?> GetAsync(int id, CancellationToken ct = default)
-        => await db.TransportOrders.AsNoTracking().FirstOrDefaultAsync(o => o.Id == id && !o.IsDeleted, ct);
+        => await db.TransportOrders.AsNoTracking().Include(o => o.Details).FirstOrDefaultAsync(o => o.Id == id && !o.IsDeleted, ct);
 
     public async Task<IReadOnlyList<TransportOrder>> ListAsync(CancellationToken ct = default)
-        => await db.TransportOrders.AsNoTracking().Where(o => !o.IsDeleted).OrderByDescending(o => o.CreatedAt).ToListAsync(ct);
+        => await db.TransportOrders.AsNoTracking().Include(o => o.Details).Where(o => !o.IsDeleted).OrderByDescending(o => o.CreatedAt).ToListAsync(ct);
 
     public async Task<IReadOnlyList<MitraTso>> ListMitraAsync(CancellationToken ct = default)
-        => await db.MitraTso.AsNoTracking().Where(m => m.Active).OrderBy(m => m.Nama).ToListAsync(ct);
+        => await db.MitraTso.AsNoTracking().Include(m => m.Tarifs).Where(m => m.Active).OrderBy(m => m.Nama).ToListAsync(ct);
 
     public async Task<TransportOrder> UpdateAsync(ClaimsPrincipal actor, int id, UpdateTransportOrderRequest request, CancellationToken ct = default)
     {
@@ -129,16 +168,31 @@ public sealed class TransportOrderService(
             throw new DbUpdateConcurrencyException("Data telah diperbarui pihak lain, muat ulang.");
         }
 
-        var mitra = await db.MitraTso.FirstOrDefaultAsync(m => m.Id == request.MitraId && m.Active, ct)
+        var mitra = await db.MitraTso.Include(m => m.Tarifs).FirstOrDefaultAsync(m => m.Id == request.MitraId && m.Active, ct)
             ?? throw new KeyNotFoundException($"Mitra TSO '{request.MitraId}' tidak terdaftar.");
         if (!mitra.AreaCoverage.Contains(request.WilayahTujuan.DisplayName(), StringComparer.OrdinalIgnoreCase))
         {
             throw new InvalidOperationException($"Mitra '{mitra.Nama}' tidak melayani wilayah {request.WilayahTujuan.DisplayName()}.");
         }
 
-        if (request.Kuantitas <= 0)
+        var detailsInput = request.Details is not null && request.Details.Count > 0
+            ? request.Details
+            : new[] { new TransportOrderDetailDto { Produk = request.Produk, Kuantitas = request.Kuantitas } };
+
+        foreach (var d in detailsInput)
         {
-            throw new ArgumentOutOfRangeException(nameof(request.Kuantitas), "Kuantitas harus > 0.");
+            if (d.Kuantitas <= 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(d.Kuantitas), "Kuantitas harus > 0.");
+            }
+
+            var tarif = mitra.Tarifs.FirstOrDefault(t => t.Produk == d.Produk);
+            var satuanTarif = tarif?.SatuanTarif ?? mitra.SatuanTarif;
+            ValidateSatuanForProduk(d.Produk, satuanTarif);
+            if (satuanTarif.Contains("kilometer", StringComparison.OrdinalIgnoreCase) && (request.JarakKm is null || request.JarakKm <= 0))
+            {
+                throw new ArgumentException($"JarakKm wajib diisi > 0 untuk satuan '{satuanTarif}' pada produk {d.Produk.DisplayName()}.");
+            }
         }
 
         if (request.TanggalKeberangkatan.Date < DateTime.Today)
@@ -147,19 +201,55 @@ public sealed class TransportOrderService(
         }
 
         var before = $"{order.MitraId}|{order.WilayahTujuan}|{order.Produk}|{order.Kuantitas}|{order.TanggalKeberangkatan:yyyy-MM-dd}";
+        var primary = detailsInput[0];
+        decimal totalEstimasi = 0;
+        foreach (var d in detailsInput)
+        {
+            var tarifRow = mitra.Tarifs.FirstOrDefault(t => t.Produk == d.Produk);
+            var tarif = tarifRow?.Tarif ?? mitra.Tarif;
+            var satuanTarif = tarifRow?.SatuanTarif ?? mitra.SatuanTarif;
+            var estimasi = satuanTarif.Contains("kilometer", StringComparison.OrdinalIgnoreCase) && request.JarakKm.HasValue
+                ? tarif * d.Kuantitas * request.JarakKm.Value
+                : tarif * d.Kuantitas;
+            totalEstimasi += estimasi;
+        }
+
         order.MitraId = mitra.Id;
         order.MitraNamaSnapshot = mitra.Nama;
-        order.TarifSnapshot = mitra.Tarif;
-        order.SatuanTarifSnapshot = mitra.SatuanTarif;
-        order.EstimasiBiayaSnapshot = mitra.Tarif * request.Kuantitas;
+        order.TarifSnapshot = mitra.Tarifs.FirstOrDefault(t => t.Produk == primary.Produk)?.Tarif ?? mitra.Tarif;
+        order.SatuanTarifSnapshot = mitra.Tarifs.FirstOrDefault(t => t.Produk == primary.Produk)?.SatuanTarif ?? mitra.SatuanTarif;
+        order.EstimasiBiayaSnapshot = totalEstimasi;
         order.WilayahTujuan = request.WilayahTujuan;
         order.RuteAsal = request.RuteAsal ?? order.RuteAsal;
         order.RuteTujuan = request.RuteTujuan ?? order.RuteTujuan;
-        order.Produk = request.Produk;
-        order.Kuantitas = request.Kuantitas;
-        order.Satuan = request.Produk.Satuan();
+        order.JarakKm = request.JarakKm;
+        order.Produk = primary.Produk;
+        order.Kuantitas = detailsInput.Sum(d => d.Kuantitas);
+        order.Satuan = primary.Produk.Satuan();
         order.TanggalKeberangkatan = request.TanggalKeberangkatan.Date;
         order.Eta = request.TanggalKeberangkatan.Date.AddDays(7);
+        await db.Entry(order).Collection(o => o.Details).LoadAsync(ct);
+        db.TransportOrderDetails.RemoveRange(order.Details);
+        order.Details.Clear();
+        foreach (var d in detailsInput)
+        {
+            var tarifRow = mitra.Tarifs.FirstOrDefault(t => t.Produk == d.Produk);
+            var tarif = tarifRow?.Tarif ?? mitra.Tarif;
+            var satuanTarif = tarifRow?.SatuanTarif ?? mitra.SatuanTarif;
+            var estimasi = satuanTarif.Contains("kilometer", StringComparison.OrdinalIgnoreCase) && request.JarakKm.HasValue
+                ? tarif * d.Kuantitas * request.JarakKm.Value
+                : tarif * d.Kuantitas;
+            order.Details.Add(new TransportOrderDetail
+            {
+                OrderId = order.Id,
+                Produk = d.Produk,
+                Kuantitas = d.Kuantitas,
+                TarifSnapshot = tarif,
+                SatuanTarifSnapshot = satuanTarif,
+                EstimasiBiayaSnapshot = estimasi,
+            });
+        }
+
         order.UpdatedAt = DateTime.UtcNow;
         order.UpdatedBy = GetEmail(actor);
         order.RowVersion = Guid.NewGuid().ToByteArray();
@@ -220,7 +310,7 @@ public sealed class TransportOrderService(
 
     public async Task<byte[]> GenerateInvoiceAsync(int id, CancellationToken ct = default)
     {
-        var order = await db.TransportOrders.AsNoTracking().FirstOrDefaultAsync(o => o.Id == id && !o.IsDeleted, ct)
+        var order = await db.TransportOrders.AsNoTracking().Include(o => o.Details).FirstOrDefaultAsync(o => o.Id == id && !o.IsDeleted, ct)
             ?? throw new KeyNotFoundException("Order tidak ditemukan.");
 
         var generator = new InvoiceGenerator();
@@ -242,24 +332,35 @@ public sealed class TransportOrderService(
 
     private async Task CreateRencanaKedatanganAsync(TransportOrder order, CancellationToken ct)
     {
-        var stok = await db.StokEntitas
-            .FirstOrDefaultAsync(e => e.Wilayah == order.WilayahTujuan && e.Produk == order.Produk && e.Tier == Tier.GudangWilayah && !e.IsDeleted, ct)
-            ?? throw new InvalidOperationException($"Gudang Wilayah {order.WilayahTujuan} / {order.Produk} tidak ditemukan.");
-
-        var existingCount = await db.RencanaKedatangan.CountAsync(r => r.StokEntitasId == stok.Id, ct);
-        if (existingCount >= 3)
+        // Load details if not already
+        await db.Entry(order).Collection(o => o.Details).LoadAsync(ct);
+        var details = order.Details.Count > 0 ? order.Details : new List<TransportOrderDetail>
         {
-            throw new InvalidOperationException("Rencana Kedatangan untuk entitas sudah penuh (3 slot).");
+            new() { Produk = order.Produk, Kuantitas = order.Kuantitas }
+        };
+
+        foreach (var detail in details)
+        {
+            var stok = await db.StokEntitas
+                .FirstOrDefaultAsync(e => e.Wilayah == order.WilayahTujuan && e.Produk == detail.Produk && e.Tier == Tier.GudangWilayah && !e.IsDeleted, ct)
+                ?? throw new InvalidOperationException($"Gudang Wilayah {order.WilayahTujuan} / {detail.Produk} tidak ditemukan.");
+
+            var existingCount = await db.RencanaKedatangan.CountAsync(r => r.StokEntitasId == stok.Id, ct);
+            if (existingCount >= 3)
+            {
+                throw new InvalidOperationException($"Rencana Kedatangan untuk {detail.Produk.DisplayName()} sudah penuh (3 slot).");
+            }
+
+            var rencana = new RencanaKedatangan
+            {
+                StokEntitasId = stok.Id,
+                Urutan = existingCount + 1,
+                NextSupply = detail.Kuantitas,
+                ETA = order.Eta,
+            };
+            db.RencanaKedatangan.Add(rencana);
         }
 
-        var rencana = new RencanaKedatangan
-        {
-            StokEntitasId = stok.Id,
-            Urutan = existingCount + 1,
-            NextSupply = order.Kuantitas,
-            ETA = order.Eta,
-        };
-        db.RencanaKedatangan.Add(rencana);
         await db.SaveChangesAsync(ct);
     }
 
@@ -269,6 +370,17 @@ public sealed class TransportOrderService(
         var prefix = $"TSO-{today}-";
         var countToday = await db.TransportOrders.CountAsync(o => o.OrderNo.StartsWith(prefix), ct);
         return $"{prefix}{(countToday + 1):D4}";
+    }
+
+    private static void ValidateSatuanForProduk(Produk produk, string satuanTarif)
+    {
+        var allowed = produk == Produk.MinyakTanah
+            ? new[] { "per_kiloliter", "per_kilometer" }
+            : new[] { "per_tabung", "per_kilometer" };
+        if (!allowed.Contains(satuanTarif, StringComparer.OrdinalIgnoreCase))
+        {
+            throw new ArgumentException($"Satuan Tarif '{satuanTarif}' tidak valid untuk produk {produk.DisplayName()}. Allowed: {string.Join(", ", allowed)}.");
+        }
     }
 
     private static void RequireAnyRole(ClaimsPrincipal actor, params string[] roles)

@@ -58,6 +58,7 @@ builder.Services.AddScoped<IAuditLogService, AuditLogService>();
 builder.Services.AddScoped<IUserAdminService, UserAdminService>();
 builder.Services.AddScoped<IAgenService, AgenService>();
 builder.Services.AddScoped<IOutletService, OutletService>();
+builder.Services.AddScoped<IMitraService, MitraService>();
 builder.Services.AddScoped<ITransportOrderService, TransportOrderService>();
 builder.Services.AddScoped<IStockDashboardService, StockDashboardService>();
 builder.Services.AddScoped<IStockWriteService, StockWriteService>();
@@ -96,6 +97,7 @@ app.MapHealthChecks("/health");
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 app.MapTsoEndpoints();
+app.MapMitraEndpoints();
 
 // Add additional endpoints required by the Identity /Account Razor components.
 app.MapAdditionalIdentityEndpoints();

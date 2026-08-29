@@ -1,0 +1,219 @@
+@page "/mitra"
+@attribute [Authorize(Roles = "Superadmin")]
+@rendermode InteractiveServer
+
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using StockMonitorTso.Domain.Entities
+@using StockMonitorTso.Infrastructure.Services
+
+@inject IMitraService MitraService
+@inject AuthenticationStateProvider AuthStateProvider
+
+<PageTitle>Mitra TSO</PageTitle>
+
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+    <div>
+        <h1 class="sm-display-lg">Mitra TSO</h1>
+        <p class="sm-body-md" style="max-width:660px;margin:4px 0 0">Kelola Mitra transporter (full 12 field) dan tarif per jenis tabung.</p>
+    </div>
+    <button class="sm-btn sm-btn-primary sm-btn-sm" @onclick="OpenCreate"><span class="material-symbols-outlined" style="font-size:18px">add</span> Tambah Mitra</button>
+</div>
+
+@if (mitras is null)
+{
+    <div class="sm-body-md" style="padding:40px 0">Memuat...</div>
+}
+else
+{
+    <div class="sm-table-wrap">
+        <div style="overflow-x:auto">
+            <table class="sm-table">
+                <thead>
+                    <tr>
+                        <th>Id</th>
+                        <th>Nama</th>
+                        <th>Jenis</th>
+                        <th>Kapasitas</th>
+                        <th>Area</th>
+                        <th>Tarif per-jenis</th>
+                        <th>Aktif</th>
+                        <th>Aksi</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var m in mitras)
+                    {
+                        <tr>
+                            <td>@m.Id</td>
+                            <td style="font-weight:600">@m.Nama</td>
+                            <td>@m.JenisKendaraan</td>
+                            <td>@m.KapasitasMax @m.SatuanKapasitas</td>
+                            <td>@string.Join(", ", m.AreaCoverage)</td>
+                            <td>
+                                @foreach (var t in m.Tarifs)
+                                {
+                                    <div class="sm-body-md" style="font-size:12px">@t.Produk.DisplayName(): @t.Tarif.ToString("N0")/@t.SatuanTarif</div>
+                                }
+                                @if (m.Tarifs.Count == 0)
+                                {
+                                    <span class="sm-body-md" style="font-size:12px">@m.Tarif.ToString("N0")/@m.SatuanTarif</span>
+                                }
+                            </td>
+                            <td>@(m.Active ? "Ya" : "Tidak")</td>
+                            <td>
+                                <div style="display:flex;gap:8px">
+                                    <button class="sm-btn sm-btn-outline sm-btn-sm" @onclick="() => OpenEdit(m)">Edit</button>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+@if (showCreate)
+{
+    <div class="sm-modal-backdrop"></div>
+    <div style="position:fixed;inset:0;z-index:110;display:flex;align-items:center;justify-content:center;overflow:auto;padding:20px">
+        <div class="sm-modal" style="max-width:720px;max-height:90vh;overflow:auto">
+            <div class="sm-modal-header">
+                <h3 class="sm-title-sm" style="margin:0">@(editingId is null ? "Tambah Mitra" : "Edit Mitra")</h3>
+                <button class="sm-btn sm-btn-outline sm-btn-sm" @onclick="CloseCreate"><span class="material-symbols-outlined" style="font-size:18px">close</span></button>
+            </div>
+            <div class="sm-modal-body">
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+                    <div><label class="sm-label-caps">Id</label><input type="text" class="sm-frame" @bind="formId" disabled="@(editingId != null)" style="width:100%;padding:8px;border-radius:var(--sm-radius);border:1px solid var(--sm-outline-variant)" /></div>
+                    <div><label class="sm-label-caps">Nama</label><input type="text" class="sm-frame" @bind="formNama" style="width:100%;padding:8px;border-radius:var(--sm-radius);border:1px solid var(--sm-outline-variant)" /></div>
+                    <div><label class="sm-label-caps">Jenis Kendaraan</label><input type="text" class="sm-frame" @bind="formJenis" style="width:100%;padding:8px;border-radius:var(--sm-radius);border:1px solid var(--sm-outline-variant)" /></div>
+                    <div><label class="sm-label-caps">Kapasitas Max</label><input type="number" class="sm-frame" @bind="formKapasitas" min="1" step="1" style="width:100%;padding:8px;border-radius:var(--sm-radius);border:1px solid var(--sm-outline-variant)" /></div>
+                    <div><label class="sm-label-caps">Satuan Kapasitas</label><select class="sm-filter" style="width:100%" @bind="formSatuanKapasitas"><option>Tabung</option><option>Kiloliter</option></select></div>
+                    <div><label class="sm-label-caps">Aktif</label><select class="sm-filter" style="width:100%" @bind="formActive"><option value="true">Ya</option><option value="false">Tidak</option></select></div>
+                    <div><label class="sm-label-caps">Kontak</label><input type="text" class="sm-frame" @bind="formKontak" style="width:100%;padding:8px;border-radius:var(--sm-radius);border:1px solid var(--sm-outline-variant)" /></div>
+                    <div><label class="sm-label-caps">PIC</label><input type="text" class="sm-frame" @bind="formPic" style="width:100%;padding:8px;border-radius:var(--sm-radius);border:1px solid var(--sm-outline-variant)" /></div>
+                    <div style="grid-column:1 / -1"><label class="sm-label-caps">Rute (pisah koma)</label><input type="text" class="sm-frame" @bind="formRute" placeholder="Pusat -> Gudang Wilayah Papua, Pusat -> Maluku" style="width:100%;padding:8px;border-radius:var(--sm-radius);border:1px solid var(--sm-outline-variant)" /></div>
+                    <div style="grid-column:1 / -1"><label class="sm-label-caps">Area Coverage (Wilayah enum, checklist)</label>
+                        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px">
+                            @foreach (var w in WilayahInfo.All)
+                            {
+                                <label style="display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" checked="@formArea.Contains(w.DisplayName())" @onchange="(e) => ToggleArea(w.DisplayName(), (bool)(e.Value ?? false))" /> @w.DisplayName()</label>
+                            }
+                        </div>
+                    </div>
+                </div>
+                <div class="sm-label-caps" style="margin:12px 0 6px">Tarif per Jenis (allowlist)</div>
+                <div style="display:flex;flex-direction:column;gap:8px">
+                    <div style="display:grid;grid-template-columns:100px 1fr 140px;gap:8px;align-items:center">
+                        <span class="sm-body-md">Minyak Tanah</span>
+                        <input type="number" min="0" step="1000" @bind="formTarifMinyak" placeholder="Tarif" style="padding:8px;border-radius:var(--sm-radius);border:1px solid var(--sm-outline-variant)" />
+                        <select class="sm-filter" @bind="formSatuanMinyak"><option value="per_kiloliter">per_kiloliter</option><option value="per_kilometer">per_kilometer</option></select>
+                    </div>
+                    <div style="display:grid;grid-template-columns:100px 1fr 140px;gap:8px;align-items:center">
+                        <span class="sm-body-md"><span class="sm-chip chip-55"><span class="dot"></span>5.5 kg</span></span>
+                        <input type="number" min="0" step="1000" @bind="formTarif55" placeholder="Tarif" style="padding:8px;border-radius:var(--sm-radius);border:1px solid var(--sm-outline-variant)" />
+                        <select class="sm-filter" @bind="formSatuan55"><option value="per_tabung">per_tabung</option><option value="per_kilometer">per_kilometer</option></select>
+                    </div>
+                    <div style="display:grid;grid-template-columns:100px 1fr 140px;gap:8px;align-items:center">
+                        <span class="sm-body-md"><span class="sm-chip chip-12"><span class="dot"></span>12 kg</span></span>
+                        <input type="number" min="0" step="1000" @bind="formTarif12" placeholder="Tarif" style="padding:8px;border-radius:var(--sm-radius);border:1px solid var(--sm-outline-variant)" />
+                        <select class="sm-filter" @bind="formSatuan12"><option value="per_tabung">per_tabung</option><option value="per_kilometer">per_kilometer</option></select>
+                    </div>
+                    <div style="display:grid;grid-template-columns:100px 1fr 140px;gap:8px;align-items:center">
+                        <span class="sm-body-md"><span class="sm-chip chip-50"><span class="dot"></span>50 kg</span></span>
+                        <input type="number" min="0" step="1000" @bind="formTarif50" placeholder="Tarif" style="padding:8px;border-radius:var(--sm-radius);border:1px solid var(--sm-outline-variant)" />
+                        <select class="sm-filter" @bind="formSatuan50"><option value="per_tabung">per_tabung</option><option value="per_kilometer">per_kilometer</option></select>
+                    </div>
+                </div>
+                @if (!string.IsNullOrEmpty(formMessage))
+                {
+                    <div style="margin-top:12px;padding:10px;border-radius:var(--sm-radius);background:var(--sm-error-container);color:var(--sm-on-error-container)">@formMessage</div>
+                }
+            </div>
+            <div class="sm-modal-footer">
+                <button class="sm-btn sm-btn-outline sm-btn-sm" @onclick="CloseCreate">Batal</button>
+                <button class="sm-btn sm-btn-primary sm-btn-sm" @onclick="SaveMitra">Simpan</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<MitraTso>? mitras;
+    private bool showCreate;
+    private string? editingId;
+    private string formId = "", formNama = "", formJenis = "", formSatuanKapasitas = "Tabung", formKontak = "", formPic = "", formRute = "";
+    private decimal formKapasitas;
+    private bool formActive = true;
+    private HashSet<string> formArea = new();
+    private decimal formTarifMinyak, formTarif55, formTarif12, formTarif50;
+    private string formSatuanMinyak = "per_kiloliter", formSatuan55 = "per_tabung", formSatuan12 = "per_tabung", formSatuan50 = "per_tabung";
+    private string? formMessage;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+    private async Task LoadAsync() => mitras = (await MitraService.ListAsync()).ToList();
+
+    private void ToggleArea(string wilayah, bool on)
+    {
+        if (on) formArea.Add(wilayah); else formArea.Remove(wilayah);
+    }
+
+    private void OpenCreate()
+    {
+        editingId = null; formId = ""; formNama = ""; formJenis = ""; formKapasitas = 0; formSatuanKapasitas = "Tabung"; formKontak = ""; formPic = ""; formRute = ""; formArea.Clear();
+        formTarifMinyak = 0; formTarif55 = 0; formTarif12 = 0; formTarif50 = 0;
+        formMessage = null; showCreate = true;
+    }
+
+    private void OpenEdit(MitraTso m)
+    {
+        editingId = m.Id; formId = m.Id; formNama = m.Nama; formJenis = m.JenisKendaraan; formKapasitas = m.KapasitasMax; formSatuanKapasitas = m.SatuanKapasitas; formKontak = m.Kontak; formPic = m.Pic; formRute = string.Join(", ", m.Rute); formArea = new HashSet<string>(m.AreaCoverage); formActive = m.Active;
+        formTarifMinyak = m.Tarifs.FirstOrDefault(t => t.Produk == Produk.MinyakTanah)?.Tarif ?? m.Tarif;
+        formTarif55 = m.Tarifs.FirstOrDefault(t => t.Produk == Produk.Lpg5_5Kg)?.Tarif ?? 0;
+        formTarif12 = m.Tarifs.FirstOrDefault(t => t.Produk == Produk.Lpg12Kg)?.Tarif ?? 0;
+        formTarif50 = m.Tarifs.FirstOrDefault(t => t.Produk == Produk.Lpg50Kg)?.Tarif ?? 0;
+        formMessage = null; showCreate = true;
+    }
+
+    private void CloseCreate() { showCreate = false; formMessage = null; }
+
+    private async Task SaveMitra()
+    {
+        var state = await AuthStateProvider.GetAuthenticationStateAsync();
+        var area = formArea.ToArray();
+        var tarifs = new List<MitraTarifDto>();
+        if (formTarifMinyak > 0) tarifs.Add(new MitraTarifDto { Produk = Produk.MinyakTanah, Tarif = formTarifMinyak, SatuanTarif = formSatuanMinyak });
+        if (formTarif55 > 0) tarifs.Add(new MitraTarifDto { Produk = Produk.Lpg5_5Kg, Tarif = formTarif55, SatuanTarif = formSatuan55 });
+        if (formTarif12 > 0) tarifs.Add(new MitraTarifDto { Produk = Produk.Lpg12Kg, Tarif = formTarif12, SatuanTarif = formSatuan12 });
+        if (formTarif50 > 0) tarifs.Add(new MitraTarifDto { Produk = Produk.Lpg50Kg, Tarif = formTarif50, SatuanTarif = formSatuan50 });
+        if (tarifs.Count == 0) { formMessage = "Isi minimal 1 tarif per jenis."; return; }
+        try
+        {
+            if (editingId is null)
+            {
+                await MitraService.CreateAsync(state.User, new CreateMitraRequest
+                {
+                    Id = formId.Trim(), Nama = formNama, JenisKendaraan = formJenis, KapasitasMax = formKapasitas, SatuanKapasitas = formSatuanKapasitas,
+                    Rute = formRute.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries), AreaCoverage = area,
+                    Kontak = formKontak, Pic = formPic, Active = formActive, Tarifs = tarifs
+                });
+            }
+            else
+            {
+                await MitraService.UpdateAsync(state.User, editingId, new UpdateMitraRequest
+                {
+                    Nama = formNama, JenisKendaraan = formJenis, KapasitasMax = formKapasitas, SatuanKapasitas = formSatuanKapasitas,
+                    Rute = formRute.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries), AreaCoverage = area,
+                    Kontak = formKontak, Pic = formPic, Active = formActive
+                });
+                foreach (var t in tarifs)
+                {
+                    await MitraService.UpdateTarifAsync(state.User, editingId, new UpdateMitraTarifRequest { Produk = t.Produk, Tarif = t.Tarif, SatuanTarif = t.SatuanTarif });
+                }
+            }
+            CloseCreate(); await LoadAsync();
+        }
+        catch (Exception ex) { formMessage = ex.Message; }
+    }
+}

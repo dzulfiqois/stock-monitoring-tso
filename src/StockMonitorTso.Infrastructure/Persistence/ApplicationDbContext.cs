@@ -14,7 +14,11 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
 
     public DbSet<MitraTso> MitraTso => Set<MitraTso>();
 
+    public DbSet<MitraTarif> MitraTarifs => Set<MitraTarif>();
+
     public DbSet<TransportOrder> TransportOrders => Set<TransportOrder>();
+
+    public DbSet<TransportOrderDetail> TransportOrderDetails => Set<TransportOrderDetail>();
 
     public DbSet<StokEntitas> StokEntitas => Set<StokEntitas>();
 
@@ -66,6 +70,26 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.Property(e => e.JenisKendaraan).HasMaxLength(64);
             entity.Property(e => e.SatuanKapasitas).HasMaxLength(32);
             entity.Property(e => e.SatuanTarif).HasMaxLength(32);
+        });
+
+        builder.Entity<MitraTarif>(entity =>
+        {
+            entity.ToTable("MitraTarifs");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.MitraId).HasMaxLength(32).IsRequired();
+            entity.Property(e => e.Produk).HasConversion<string>().HasMaxLength(32);
+            entity.Property(e => e.SatuanTarif).HasMaxLength(32);
+            entity.HasOne(e => e.Mitra).WithMany(m => m.Tarifs).HasForeignKey(e => e.MitraId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasIndex(e => new { e.MitraId, e.Produk }).IsUnique();
+        });
+
+        builder.Entity<TransportOrderDetail>(entity =>
+        {
+            entity.ToTable("TransportOrderDetails");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Produk).HasConversion<string>().HasMaxLength(32);
+            entity.Property(e => e.SatuanTarifSnapshot).HasMaxLength(32);
+            entity.HasOne(e => e.Order).WithMany(o => o.Details).HasForeignKey(e => e.OrderId).OnDelete(DeleteBehavior.Cascade);
         });
 
         builder.Entity<TransportOrder>(entity =>

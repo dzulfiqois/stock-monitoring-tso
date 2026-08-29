@@ -3,6 +3,12 @@ using StockMonitorTso.Domain.Entities;
 
 namespace StockMonitorTso.Infrastructure.Services;
 
+public sealed record TransportOrderDetailDto
+{
+    public required Produk Produk { get; init; }
+    public required decimal Kuantitas { get; init; }
+}
+
 public sealed record CreateTransportOrderRequest
 {
     public required string MitraId { get; init; }
@@ -12,6 +18,8 @@ public sealed record CreateTransportOrderRequest
     public required DateTime TanggalKeberangkatan { get; init; }
     public string? RuteAsal { get; init; }
     public string? RuteTujuan { get; init; }
+    public decimal? JarakKm { get; init; }
+    public IReadOnlyList<TransportOrderDetailDto>? Details { get; init; }
 }
 
 public sealed record UpdateTransportOrderRequest
@@ -23,6 +31,8 @@ public sealed record UpdateTransportOrderRequest
     public required DateTime TanggalKeberangkatan { get; init; }
     public string? RuteAsal { get; init; }
     public string? RuteTujuan { get; init; }
+    public decimal? JarakKm { get; init; }
+    public IReadOnlyList<TransportOrderDetailDto>? Details { get; init; }
     public required byte[] RowVersion { get; init; }
 }
 

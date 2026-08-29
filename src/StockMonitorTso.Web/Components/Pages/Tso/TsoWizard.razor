@@ -51,24 +51,58 @@
                 </select>
             </div>
             <div>
-                <label class="sm-label-caps" style="display:block;margin-bottom:6px">Jenis Material</label>
-                <select class="sm-filter" style="width:100%" @bind="produk">
-                    @foreach (var p in ProdukInfo.All)
-                    {
-                        <option value="@p">@p.DisplayName() (@p.Satuan())</option>
-                    }
-                </select>
+                <label class="sm-label-caps" style="display:block;margin-bottom:6px">Tipe Muatan</label>
+                <div style="display:flex;gap:12px;margin-top:6px">
+                    <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="radio" name="muatan" checked="@isMinyak" @onchange="() => isMinyak = true" /> Minyak Tanah</label>
+                    <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="radio" name="muatan" checked="@(!isMinyak)" @onchange="() => isMinyak = false" /> Gas LPG</label>
+                </div>
             </div>
         </div>
-        <div style="margin-top:12px">
-            <label class="sm-label-caps" style="display:block;margin-bottom:6px">Kuantitas</label>
-            <div style="display:flex;align-items:center;gap:8px">
-                <button type="button" class="sm-btn sm-btn-outline sm-btn-sm" @onclick="() => kuantitas = Math.Max(1, kuantitas - 1)">−</button>
-                <input type="number" min="1" step="1" @bind="kuantitas" style="width:120px;padding:8px;border-radius:var(--sm-radius);border:1px solid var(--sm-outline-variant);background:var(--sm-surface-bright)" />
-                <button type="button" class="sm-btn sm-btn-outline sm-btn-sm" @onclick="() => kuantitas++">+</button>
-                <span class="sm-body-md">@produk.Satuan()</span>
+        @if (isMinyak)
+        {
+            <div style="margin-top:12px">
+                <label class="sm-label-caps" style="display:block;margin-bottom:6px">Kuantitas Minyak Tanah (Kiloliter)</label>
+                <div style="display:flex;align-items:center;gap:8px">
+                    <button type="button" class="sm-btn sm-btn-outline sm-btn-sm" @onclick="() => qtyMinyak = Math.Max(1, qtyMinyak - 1)">−</button>
+                    <input type="number" min="1" step="0.1" @bind="qtyMinyak" style="width:120px;padding:8px;border-radius:var(--sm-radius);border:1px solid var(--sm-outline-variant);background:var(--sm-surface-bright)" />
+                    <button type="button" class="sm-btn sm-btn-outline sm-btn-sm" @onclick="() => qtyMinyak++">+</button>
+                    <span class="sm-body-md">Kiloliter</span>
+                </div>
             </div>
-        </div>
+        }
+        else
+        {
+            <div style="margin-top:12px;display:flex;flex-direction:column;gap:10px">
+                <div class="sm-label-caps">Gas LPG — per jenis tabung (1 trip bisa multi-jenis)</div>
+                <div style="display:grid;grid-template-columns:120px 1fr;gap:10px;align-items:center">
+                    <span class="sm-body-md"><span class="sm-chip chip-55"><span class="dot"></span>5.5 kg</span></span>
+                    <div style="display:flex;align-items:center;gap:8px">
+                        <button type="button" class="sm-btn sm-btn-outline sm-btn-sm" @onclick="() => qty55 = Math.Max(0, qty55 - 1)">−</button>
+                        <input type="number" min="0" step="1" @bind="qty55" style="width:100px;padding:8px;border-radius:var(--sm-radius);border:1px solid var(--sm-outline-variant);background:var(--sm-surface-bright)" />
+                        <button type="button" class="sm-btn sm-btn-outline sm-btn-sm" @onclick="() => qty55++">+</button>
+                        <span class="sm-body-md">Tabung</span>
+                    </div>
+                </div>
+                <div style="display:grid;grid-template-columns:120px 1fr;gap:10px;align-items:center">
+                    <span class="sm-body-md"><span class="sm-chip chip-12"><span class="dot"></span>12 kg</span></span>
+                    <div style="display:flex;align-items:center;gap:8px">
+                        <button type="button" class="sm-btn sm-btn-outline sm-btn-sm" @onclick="() => qty12 = Math.Max(0, qty12 - 1)">−</button>
+                        <input type="number" min="0" step="1" @bind="qty12" style="width:100px;padding:8px;border-radius:var(--sm-radius);border:1px solid var(--sm-outline-variant);background:var(--sm-surface-bright)" />
+                        <button type="button" class="sm-btn sm-btn-outline sm-btn-sm" @onclick="() => qty12++">+</button>
+                        <span class="sm-body-md">Tabung</span>
+                    </div>
+                </div>
+                <div style="display:grid;grid-template-columns:120px 1fr;gap:10px;align-items:center">
+                    <span class="sm-body-md"><span class="sm-chip chip-50"><span class="dot"></span>50 kg</span></span>
+                    <div style="display:flex;align-items:center;gap:8px">
+                        <button type="button" class="sm-btn sm-btn-outline sm-btn-sm" @onclick="() => qty50 = Math.Max(0, qty50 - 1)">−</button>
+                        <input type="number" min="0" step="1" @bind="qty50" style="width:100px;padding:8px;border-radius:var(--sm-radius);border:1px solid var(--sm-outline-variant);background:var(--sm-surface-bright)" />
+                        <button type="button" class="sm-btn sm-btn-outline sm-btn-sm" @onclick="() => qty50++">+</button>
+                        <span class="sm-body-md">Tabung</span>
+                    </div>
+                </div>
+            </div>
+        }
     }
     else if (step == 2)
     {
@@ -81,6 +115,10 @@
             <div>
                 <label class="sm-label-caps" style="display:block;margin-bottom:6px">Rute Tujuan</label>
                 <input type="text" class="sm-frame" @bind="ruteTujuan" style="width:100%;padding:8px;border-radius:var(--sm-radius);border:1px solid var(--sm-outline-variant);background:var(--sm-surface-bright)" />
+            </div>
+            <div>
+                <label class="sm-label-caps" style="display:block;margin-bottom:6px">Jarak (km) — manual, wajib jika tarif per_kilometer</label>
+                <input type="number" min="0" step="0.1" @bind="jarakKm" placeholder="Kosongkan jika per_tabung/per_kiloliter" style="width:100%;padding:8px;border-radius:var(--sm-radius);border:1px solid var(--sm-outline-variant);background:var(--sm-surface-bright)" />
             </div>
             <div>
                 <label class="sm-label-caps" style="display:block;margin-bottom:6px">Tanggal Keberangkatan</label>
@@ -101,18 +139,22 @@
                 <option value="">— Pilih Mitra —</option>
                 @foreach (var m in filteredMitra)
                 {
-                    <option value="@m.Id">@m.Nama — @m.JenisKendaraan (Kapasitas @m.KapasitasMax @m.SatuanKapasitas, Tarif @m.Tarif.ToString("N0") / @m.SatuanTarif)</option>
+                    <option value="@m.Id">@m.Nama — @m.JenisKendaraan (Kapasitas @m.KapasitasMax @m.SatuanKapasitas)</option>
                 }
             </select>
         </div>
         @if (selectedMitra is not null)
         {
             <div class="sm-card" style="margin-top:12px;padding:12px;background:var(--sm-surface-container-low)">
-                <div class="sm-label-caps">Standar Harga</div>
-                <div class="sm-title-sm">@selectedMitra.Tarif.ToString("N0") / @selectedMitra.SatuanTarif</div>
-                <div class="sm-label-caps" style="margin-top:8px">Estimasi Biaya</div>
+                <div class="sm-label-caps">Mitra: @selectedMitra.Nama (@selectedMitra.JenisKendaraan)</div>
+                <div class="sm-body-md" style="font-size:12px;color:var(--sm-on-surface-variant)">Area: @string.Join(", ", selectedMitra.AreaCoverage) | Tarif per-jenis:</div>
+                @foreach (var t in selectedMitra.Tarifs)
+                {
+                    <div class="sm-body-md" style="font-size:12px">@t.Produk.DisplayName(): Rp @t.Tarif.ToString("N0") / @t.SatuanTarif</div>
+                }
+                <div class="sm-label-caps" style="margin-top:8px">Estimasi Biaya Total</div>
                 <div class="sm-title-sm" style="color:var(--sm-primary)">Rp @estimasiBiaya.ToString("N0")</div>
-                <div class="sm-body-md" style="font-size:12px;color:var(--sm-on-surface-variant)">@kuantitas.ToString("0.##") @produk.Satuan() × @selectedMitra.Tarif.ToString("N0")</div>
+                <div class="sm-body-md" style="font-size:12px;color:var(--sm-on-surface-variant)">@estimasiDetail</div>
             </div>
         }
     }
@@ -120,10 +162,10 @@
     {
         <h3 class="sm-title-sm">4. Ringkasan Proposal</h3>
         <div style="margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:12px">
-            <div class="sm-card" style="padding:12px"><span class="sm-label-caps">Gudang Tujuan</span><div class="sm-title-sm">@wilayahTujuan.DisplayName()</div><span class="sm-label-caps">Rute</span><div class="sm-body-md">@ruteAsal → @ruteTujuan</div></div>
-            <div class="sm-card" style="padding:12px"><span class="sm-label-caps">Obyek</span><div class="sm-title-sm">@produk.DisplayName() — @kuantitas.ToString("0.##") @produk.Satuan()</div><span class="sm-label-caps">Jadwal</span><div class="sm-body-md">@tanggalBerangkat.ToString("dd MMM yyyy") → ETA @tanggalBerangkat.AddDays(7).ToString("dd MMM yyyy")</div></div>
+            <div class="sm-card" style="padding:12px"><span class="sm-label-caps">Gudang Tujuan</span><div class="sm-title-sm">@wilayahTujuan.DisplayName()</div><span class="sm-label-caps">Rute</span><div class="sm-body-md">@ruteAsal → @ruteTujuan @(jarakKm.HasValue ? $"({jarakKm} km)" : "")</div></div>
+            <div class="sm-card" style="padding:12px"><span class="sm-label-caps">Obyek</span><div class="sm-body-md">@ringkasanObyek</div><span class="sm-label-caps">Jadwal</span><div class="sm-body-md">@tanggalBerangkat.ToString("dd MMM yyyy") → ETA @tanggalBerangkat.AddDays(7).ToString("dd MMM yyyy")</div></div>
             <div class="sm-card" style="padding:12px"><span class="sm-label-caps">Transporter</span><div class="sm-title-sm">@(selectedMitra?.Nama ?? "-") (@(selectedMitra?.JenisKendaraan ?? "-"))</div><span class="sm-label-caps">Estimasi Biaya</span><div class="sm-title-sm">Rp @estimasiBiaya.ToString("N0")</div></div>
-            <div class="sm-card" style="padding:12px;background:var(--sm-surface-container-low)"><span class="sm-label-caps">Draft Proposal</span><div class="sm-body-md">Order No: @(IsEdit ? existingOrder?.OrderNo ?? "-" : "akan digenerate saat Submit")</div><div class="sm-body-md">Vol Total: @kuantitas @produk.Satuan()</div></div>
+            <div class="sm-card" style="padding:12px;background:var(--sm-surface-container-low)"><span class="sm-label-caps">Draft Proposal</span><div class="sm-body-md">Order No: @(IsEdit ? existingOrder?.OrderNo ?? "-" : "akan digenerate saat Submit")</div><div class="sm-body-md">Vol Total: @totalKuantitas.ToString("0.##") @(isMinyak ? "Kiloliter" : "Tabung")</div></div>
         </div>
     }
 
@@ -153,17 +195,22 @@
     private TransportOrder? existingOrder;
     private int step = 1;
     private Wilayah wilayahTujuan = Wilayah.Papua;
-    private Produk produk = Produk.Lpg5_5Kg;
-    private decimal kuantitas = 100;
+    private bool isMinyak = true;
+    private decimal qtyMinyak = 100;
+    private decimal qty55, qty12, qty50;
+    private decimal? jarakKm;
     private string ruteAsal = "Pusat";
     private string ruteTujuan = "Gudang Wilayah Papua";
     private DateTime tanggalBerangkat = DateTime.Today.AddDays(1);
     private string? selectedMitraId;
     private MitraTso? selectedMitra;
     private decimal estimasiBiaya;
+    private string estimasiDetail = "";
     private string? errorMessage;
     private List<MitraTso> allMitra = new();
     private List<MitraTso> filteredMitra => allMitra.Where(m => m.AreaCoverage.Contains(wilayahTujuan.DisplayName())).ToList();
+    private string ringkasanObyek => isMinyak ? $"Minyak Tanah — {qtyMinyak} Kiloliter" : string.Join(", ", new[] { (qty55 > 0 ? $"5.5kg:{qty55}" : null), (qty12 > 0 ? $"12kg:{qty12}" : null), (qty50 > 0 ? $"50kg:{qty50}" : null) }.Where(s => s != null));
+    private decimal totalKuantitas => isMinyak ? qtyMinyak : qty55 + qty12 + qty50;
 
     private string StepLabel(int i) => i switch { 1 => "Tujuan & Obyek", 2 => "Rute & Jadwal", 3 => "Transporter", 4 => "Ringkasan", _ => "" };
 
@@ -176,13 +223,32 @@
             if (existingOrder is not null)
             {
                 wilayahTujuan = existingOrder.WilayahTujuan;
-                produk = existingOrder.Produk;
-                kuantitas = existingOrder.Kuantitas;
+                jarakKm = existingOrder.JarakKm;
                 ruteAsal = existingOrder.RuteAsal;
                 ruteTujuan = existingOrder.RuteTujuan;
                 tanggalBerangkat = existingOrder.TanggalKeberangkatan;
                 selectedMitraId = existingOrder.MitraId;
                 selectedMitra = allMitra.FirstOrDefault(m => m.Id == selectedMitraId);
+                if (existingOrder.Details.Count > 0)
+                {
+                    isMinyak = existingOrder.Details.Any(d => d.Produk == Produk.MinyakTanah);
+                    qtyMinyak = existingOrder.Details.FirstOrDefault(d => d.Produk == Produk.MinyakTanah)?.Kuantitas ?? 0;
+                    qty55 = existingOrder.Details.FirstOrDefault(d => d.Produk == Produk.Lpg5_5Kg)?.Kuantitas ?? 0;
+                    qty12 = existingOrder.Details.FirstOrDefault(d => d.Produk == Produk.Lpg12Kg)?.Kuantitas ?? 0;
+                    qty50 = existingOrder.Details.FirstOrDefault(d => d.Produk == Produk.Lpg50Kg)?.Kuantitas ?? 0;
+                    if (!isMinyak && qtyMinyak > 0) isMinyak = false;
+                }
+                else
+                {
+                    isMinyak = existingOrder.Produk == Produk.MinyakTanah;
+                    if (isMinyak) qtyMinyak = existingOrder.Kuantitas;
+                    else
+                    {
+                        if (existingOrder.Produk == Produk.Lpg5_5Kg) qty55 = existingOrder.Kuantitas;
+                        else if (existingOrder.Produk == Produk.Lpg12Kg) qty12 = existingOrder.Kuantitas;
+                        else if (existingOrder.Produk == Produk.Lpg50Kg) qty50 = existingOrder.Kuantitas;
+                    }
+                }
                 UpdateEstimasi();
             }
         }
@@ -200,14 +266,27 @@
 
     private void UpdateEstimasi()
     {
-        if (selectedMitra is not null)
+        if (selectedMitra is null)
         {
-            estimasiBiaya = selectedMitra.Tarif * kuantitas;
+            estimasiBiaya = 0; estimasiDetail = "";
+            return;
         }
-        else
+        decimal total = 0;
+        var parts = new List<string>();
+        void Add(Produk p, decimal qty)
         {
-            estimasiBiaya = 0;
+            if (qty <= 0) return;
+            var tarifRow = selectedMitra.Tarifs.FirstOrDefault(t => t.Produk == p);
+            var tarif = tarifRow?.Tarif ?? selectedMitra.Tarif;
+            var satuan = tarifRow?.SatuanTarif ?? selectedMitra.SatuanTarif;
+            var est = satuan.Contains("kilometer", StringComparison.OrdinalIgnoreCase) && jarakKm.HasValue ? tarif * qty * jarakKm.Value : tarif * qty;
+            total += est;
+            parts.Add($"{p.DisplayName()} {qty} × {tarif:N0} = {est:N0}");
         }
+        if (isMinyak) Add(Produk.MinyakTanah, qtyMinyak);
+        else { Add(Produk.Lpg5_5Kg, qty55); Add(Produk.Lpg12Kg, qty12); Add(Produk.Lpg50Kg, qty50); }
+        estimasiBiaya = total;
+        estimasiDetail = string.Join(" + ", parts);
     }
 
     private void Next()
@@ -215,12 +294,14 @@
         errorMessage = null;
         if (step == 1)
         {
-            if (kuantitas <= 0) { errorMessage = "Kuantitas harus > 0."; return; }
+            if (isMinyak && qtyMinyak <= 0) { errorMessage = "Kuantitas Minyak harus > 0."; return; }
+            if (!isMinyak && qty55 <= 0 && qty12 <= 0 && qty50 <= 0) { errorMessage = "Pilih minimal 1 jenis tabung dengan kuantitas > 0."; return; }
             ruteTujuan = $"Gudang Wilayah {wilayahTujuan.DisplayName()}";
         }
         if (step == 2)
         {
             if (tanggalBerangkat.Date < DateTime.Today) { errorMessage = "Tanggal Keberangkatan tidak boleh lampau."; return; }
+            if (jarakKm.HasValue && jarakKm <= 0) { errorMessage = "Jarak harus > 0 atau kosongkan."; return; }
         }
         if (step == 3)
         {
@@ -240,6 +321,18 @@
     {
         errorMessage = null;
         var state = await AuthStateProvider.GetAuthenticationStateAsync();
+        var details = new List<TransportOrderDetailDto>();
+        if (isMinyak)
+        {
+            if (qtyMinyak > 0) details.Add(new TransportOrderDetailDto { Produk = Produk.MinyakTanah, Kuantitas = qtyMinyak });
+        }
+        else
+        {
+            if (qty55 > 0) details.Add(new TransportOrderDetailDto { Produk = Produk.Lpg5_5Kg, Kuantitas = qty55 });
+            if (qty12 > 0) details.Add(new TransportOrderDetailDto { Produk = Produk.Lpg12Kg, Kuantitas = qty12 });
+            if (qty50 > 0) details.Add(new TransportOrderDetailDto { Produk = Produk.Lpg50Kg, Kuantitas = qty50 });
+        }
+        if (details.Count == 0) { errorMessage = "Kuantitas tidak boleh kosong."; return; }
         try
         {
             if (IsEdit && Id.HasValue)
@@ -248,11 +341,13 @@
                 {
                     MitraId = selectedMitraId!,
                     WilayahTujuan = wilayahTujuan,
-                    Produk = produk,
-                    Kuantitas = kuantitas,
+                    Produk = details[0].Produk,
+                    Kuantitas = details.Sum(d => d.Kuantitas),
                     TanggalKeberangkatan = tanggalBerangkat,
                     RuteAsal = ruteAsal,
                     RuteTujuan = ruteTujuan,
+                    JarakKm = jarakKm,
+                    Details = details,
                     RowVersion = existingOrder!.RowVersion,
                 };
                 var updated = await TsoService.UpdateAsync(state.User, Id.Value, req);
@@ -264,11 +359,13 @@
                 {
                     MitraId = selectedMitraId!,
                     WilayahTujuan = wilayahTujuan,
-                    Produk = produk,
-                    Kuantitas = kuantitas,
+                    Produk = details[0].Produk,
+                    Kuantitas = details.Sum(d => d.Kuantitas),
                     TanggalKeberangkatan = tanggalBerangkat,
                     RuteAsal = ruteAsal,
                     RuteTujuan = ruteTujuan,
+                    JarakKm = jarakKm,
+                    Details = details,
                 };
                 var order = await TsoService.CreateAsync(state.User, req);
                 NavigationManager.NavigateTo($"tso/{order.Id}");

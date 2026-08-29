@@ -109,14 +109,19 @@ body {
 .sm-auth-shell {
   min-height: 100vh;
   display: flex; align-items: center; justify-content: center;
-  background: var(--sm-background);
+  background:
+    linear-gradient(to bottom,
+      rgba(247, 249, 251, 0)    0%,
+      rgba(247, 249, 251, 0)    75%,
+      rgba(247, 249, 251, 0.8) 100%),
+    url('images/background.jpeg') center / cover no-repeat;
   padding: 24px;
 }
 .sm-auth-card {
   width: 100%; max-width: 440px;
   background: var(--sm-surface-container-lowest);
   border: 1px solid var(--sm-outline-variant);
-  border-radius: var(--sm-radius-xl);
+  border-radius: var(--sm-radius-lg);
   padding: 32px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
 }
