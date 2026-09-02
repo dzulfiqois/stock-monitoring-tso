@@ -92,3 +92,20 @@ docker compose build && docker compose up -d && curl -k https://localhost/health
 ```
 
 Akun seed: `superadmin@stockmonitor.local` / `Superadmin!2345` (Operator/Supervisi/Tamu/multi ada di `SeedData`).
+
+---
+
+## 7. Slice 2026-09 — Buat user baru oleh Superadmin
+
+Lingkup yang dituntaskan (di luar fase 5):
+
+- **Service**: `IUserAdminService.CreateUserAsync(actor, email, password, roles[], activeRole)` — `RequireSuperadmin`; validasi email unik, roles terdaftar di `RoleManager`, `activeRole` anggota `roles`; `EmailConfirmed = true`; `AddToRolesAsync`; audit log `CreateUser` (`EntityType="ApplicationUser"`, `After=roles joined`).
+- **UI**: `/admin/users` direstylye ke design system `sm-*` (`sm-table`, `sm-pill`, `sm-segmented`, `sm-btn`, `sm-modal`); tombol "Tambah User" → modal dengan field email/password/konfirmasi + checklist role + dropdown "Role Aktif" (terbatas ke role tercentang); refresh daftar + alert status (`sm-alert-success/error`).
+- **Hapus scaffold berbahaya**: `Web/Components/Account/Pages/Register.razor` + `RegisterConfirmation.razor` dihapus — sebelumnya orphan, Superadmin-gated, dan `SignInManager.SignInAsync(user)` menimpa cookie Superadmin saat submit (bug latent). ExternalLogin tidak disentuh (sudah unreachable dari Login).
+- **Tests**: `tests/StockMonitorTso.IntegrationTests/UserAdminCreateTests.cs` — 7 test: RBAC (Superadmin OK; Operator/Supervisi/Tamu ditolak & tak tercipta), duplikat email, password lemah (< 8), role tak dikenal, activeRole ∉ roles, audit tercatat (`After=roles joined`, `ActorRole=Superadmin`), sign-in-able dengan password awal.
+- **Fix 2026-09 — crash circuit `/admin/users`**: `StatusMessage.razor` `HttpContext` dibuat nullable + guard `if (HttpContext is null) return;` di `OnInitialized` (sebelumnya NRE saat dirender interactive — `HttpContext` null di circuit). `<StatusMessage>` di `UserManagement.razor` diganti alert inline `sm-alert-success/error` (CSS baru di `app.css`). Root cause: halaman interactive satu-satunya yang menyentuh komponen Account static-SSR; halaman Identity static lain tidak terdampak.
+- **Fix 2026-09 — modal di belakang blur**: modal "Tambah User" kini dibungkus wrapper `position:fixed;inset:0;z-index:110;display:flex;align-items:center;justify-content:center;overflow-y:auto` (pola yang sama dengan halaman lain, mis. `DaftarAgen.razor:108`) — sebelumnya `.sm-modal` tanpa wrapper berada di alur dokumen normal di bawah backdrop blur (fixed, z-index 100) sehingga tidak bisa diklik. Backdrop tetap `@onclick` close.
+- **Rev. UI sidebar (2026-09)**: `.sm-sidebar-brand` jadi kolom (`flex-direction:column; align-items:flex-start`) — logo Pertamina di atas teks "Stock Monitor & TSO", rata kiri, teks tidak lagi wrap dua baris.
+- **Bug tertinggal**: `ActiveRoleSwitcher` di layout `NavMenu` masih non-fungsional (layout static; render mode per-halaman tidak propagate ke parent layout — `UserManagement.razor` InteractiveServer sendiri OK). Slice terpisah.
+
+Gerbang: `dotnet build -warnaserror` 0 error · 7 test baru hijau (61 integration lama) · 5 test prasejarah `StockDashboardTests`/`AgenDashboardTests` masih gagal (xlsx `Monitoring Tabung RPM(1).xlsx` di-gitignore di `apps`; sama tanpa slice ini) · `dotnet format --verify` bersih · smoke `/health` 200 · `/admin/users` redirect login untuk anonim.

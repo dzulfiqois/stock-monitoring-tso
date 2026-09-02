@@ -2,8 +2,10 @@
 
 > Checklist ringkas per fase (`PLAN.md §4`). Dibaca bersama `PLAN.md`, `SESSION_HANDOFF.md`,
 > `STOCK_MONITORING_SPEC.md`, `TRANSPORT_SHIPPING_ORDER_SPEC.md`.
-> Status per 2026-08: **Phase 0–4 hijau**, Phase 5 belum.
-> Verifikasi: `dotnet build -warnaserror` (0 error) · `dotnet test` 91/91 (32 unit + 59 integrasi) · `dotnet format --verify` bersih · smoke `/health` 200 + DB seed (Agen 18, Outlet 36, Mitra 3).
+> Status per 2026-09: **Phase 0–4 hijau**, Phase 5 belum.
+> Verifikasi: `dotnet build -warnaserror` (0 error) · `dotnet test` 98/98 lulus tanpa 5 prasejarah (32 unit) · `dotnet format --verify` bersih · smoke `/health` 200 + DB seed (Agen 18, Outlet 36, Mitra 3).
+>
+> Catatan: **5 test prasejarah (`StockDashboardTests` ×4, `AgenDashboardTests.GetSalesAreaCards_Papua_…` ×1)** gagal karena `Monitoring Tabung RPM(1).xlsx` di-gitignore di branch `apps` (tetap ada di `main`). Sama dengan tanpa slice ini.
 
 ---
 
@@ -33,6 +35,7 @@
 - [x] Switchable active role: claim role-aktif scoped sesi (pilih saat login, switch in-sesi)
 - [x] Idle timeout 15m (cookie sliding) + logout eksplisit
 - [x] Assign role & ganti password **Superadmin-only** (di service layer, bukan UI saja)
+- [x] **Buat user baru + assign role (Superadmin-only, 2026-09)**: `UserAdminService.CreateUserAsync` (email + password + ≥1 role + role aktif eksplisit), audit `CreateUser`; UI modal di `/admin/users`; scaffold `/Account/Register` dihapus (berbahaya: buat user tanpa role + `SignInAsync` menimpa sesi Superadmin).
 - [x] `AuditLog` entity + `AuditLogService`
 
 **Keterangan:**

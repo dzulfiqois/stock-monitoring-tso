@@ -5,7 +5,7 @@
 > `docs/PHASE_CHECKLIST.md`, `docs/SESSION_HANDOFF.md`, `docs/CHANGE_PROCESS_NOTE.md`.
 >
 > Cara pakai: centang `[x]` bila titik/DoD terpenuhi; rujuk kolom **Bukti/Verifikasi**.
-> Status diperbarui per 2026-08.
+> Status diperbarui per 2026-09.
 
 ---
 
@@ -14,13 +14,13 @@
 | Phase                                                       | Status | Ringkasan                                                         |
 | ----------------------------------------------------------- | :----: | ----------------------------------------------------------------- |
 | Phase 0 Skeleton                                            |   ✅   | Selesai & hijau                                                   |
-| Phase 1 Auth, RBAC & Sesi                                   |   ✅   | Selesai & hijau                                                   |
+| Phase 1 Auth, RBAC & Sesi (+ buat user oleh Superadmin 2026-09) |   ✅   | Selesai & hijau — `CreateUserAsync` + audit + modal `/admin/users` |
 | Phase 2 Monitoring (read+compute)                           |   ✅   | Selesai & hijau                                                   |
 | Phase 3 CRUD + Konservasi (+ lanjutan Agen/Outlet/Transfer/Rev UI) |   ✅   | Selesai & hijau —**CRUD belum final menunggu stakeholder** |
 | Phase 4 Modul TSO (wizard + snapshot + /api/tso + Docker)   |   ✅   | Selesai & hijau — wizard 4 langkah, snapshot tarif, PDF idempoten |
 | Phase 5 Hardening                                           |   ⏭   | Belum                                                             |
 
-**Gerbang global terakhir (2026-08):** `dotnet build -warnaserror` 0 error · `dotnet test` 91/91 (32 unit + 59 integrasi) · `dotnet format --verify` bersih · smoke `/health` 200 + DB seed (Agen 18, Outlet 36, Mitra 3) + `/api/tso` lulus.
+**Gerbang global terakhir (2026-09):** `dotnet build -warnaserror` 0 error · `dotnet test` 98/98 lulus tanpa 5 prasejarah (xlsx tidak di `apps` branch — sama tanpa slice); 7 baru untuk `CreateUser`; `dotnet format --verify` bersih · smoke `/health` 200 + `/admin/users` 302 (redirect login untuk anonim).
 
 ---
 
@@ -71,6 +71,7 @@ Setiap slice/task dinyatakan selesai bila semua kriteria berikut centang:
 | Switchable active role (claim role-aktif scoped sesi)                                            |   ✅   | `Services/ActiveRoleClaimsPrincipalFactory.cs` · `ActiveRoleSwitcher.razor`                                       | `ClaimsFactory` hanya klaim role aktif                              |
 | Idle timeout 15m (sliding) + logout eksplisit                                                    |   ✅   | `Web/Program.cs` `ExpireTimeSpan=15m, SlidingExpiration` · `AuthAndRbacTests.IdleTimeout_ConfiguredTo15Minutes` | `IdentityConstants.ApplicationScheme`                               |
 | Assign role & ganti password**Superadmin-only** (service layer)                            |   ✅   | `Services/UserAdminService.cs` (`RequireSuperadmin`) · `AuthAndRbacTests`                                       | `AssignRoleAsync`/`RemoveRoleAsync`/`SetPasswordAsync` di-audit |
+| **Buat user baru + assign role (Superadmin-only, 2026-09)**                                |   ✅   | `Services/UserAdminService.cs` `CreateUserAsync` (`RequireSuperadmin`) · `UserAdminCreateTests` 7 test hijau | `Email+Password+Roles[]+ActiveRole`; audit `CreateUser`; modal di `/admin/users` |
 | `AuditLog` entity + `AuditLogService`                                                        |   ✅   | `Domain/Entities/AuditLog.cs` · `Infrastructure/Services/AuditLogService.cs`                                      | Append-only,`Timestamp=UtcNow`                                      |
 | Seed 5 akun (Superadmin/Operator/Supervisi/Tamu/Multi)                                           |   ✅   | `Seed/SeedData.cs` (`Seed:SuperadminEmail` dll.)                                                                   | `Seed:DefaultPassword` override via config                          |
 | **DoD P1** — login multi-role, switch role, idle expiry, assign-role oleh Superadmin only |   ✅   | `AuthAndRbacTests` 6 test hijau · manual login + switch                                                             | Non-Superadmin ditolak`UnauthorizedAccessException`                 |
