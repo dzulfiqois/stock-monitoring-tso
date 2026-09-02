@@ -2,8 +2,8 @@
 
 > Checklist ringkas per fase (`PLAN.md §4`). Dibaca bersama `PLAN.md`, `SESSION_HANDOFF.md`,
 > `STOCK_MONITORING_SPEC.md`, `TRANSPORT_SHIPPING_ORDER_SPEC.md`.
-> Status per 2026-08: **Phase 0–3 hijau**, Phase 4 berikutnya, Phase 5 belum.
-> Verifikasi: `dotnet build -warnaserror` · `dotnet test` · `dotnet format --verify` · smoke.
+> Status per 2026-08: **Phase 0–4 hijau**, Phase 5 belum.
+> Verifikasi: `dotnet build -warnaserror` (0 error) · `dotnet test` 91/91 (32 unit + 59 integrasi) · `dotnet format --verify` bersih · smoke `/health` 200 + DB seed (Agen 18, Outlet 36, Mitra 3).
 
 ---
 
@@ -47,7 +47,8 @@
 **Deskripsi:** Entitas stok per `(Wilayah × Produk × Tier)`, penghitungan CD/Exhaust/Status/MT/CD_n, dashboard read-only, seed dari Excel.
 
 **Checklist:**
-- [x] Entitas `Wilayah` (7 canon), `Produk` (LPG 5.5/12/50 + Minyak Tanah), `Tier` (Agen/Outlet)
+- [x] Entitas `Wilayah` (7 canon), `Produk` (LPG 5.5/12/50 + Minyak Tanah), `Tier` (GudangWilayah, Agen, Outlet) — `GudangWilayah` = `Gudang Agen` (spec §2)
+- [x] Entitas `Agen` (2–3 per Gudang) & `Outlet` (2 per Agen, tanpa limit) — entitas bernama, stok per (Agen×Produk)/(Outlet×Produk) (spec §2+§3.c)
 - [x] `StokEntitas` (stok, DOT) + `RencanaKedatangan` (Next Supply, ETA, CD_n, Exhaust_n, maks 3 slot)
 - [x] Rumus: `CD = Stok÷DOT`; `ExhaustDate = TanggalStokAwal + CD`; `Status` Kritis<3/Warning<7/Aman≥7
 - [x] `MT = Tabung × kg ÷ 1000`; `Total MT = Σ MT` per wilayah (LPG)
@@ -74,8 +75,10 @@
 - [x] Tolak overdraft (G3/F4): stok tidak boleh `< 0`
 - [x] Recompute otomatis CD/Exhaust/Status setelah mutasi
 - [x] Redesign UI Stitch (sidebar 288px, kartu, KPI, pill, modal, segmented, bar chart)
-- [x] **Inventarisasi Tier Agen** (lanjutan 2026-08): entitas `Agen` bernama (2–3 per gudang wilayah), baris stok per (Agen × Produk), migrasi data `Tier.Agen`→`GudangWilayah`, mock 50% stok gudang dibagi rata + DOT rata (dengan audit Transfer), identitas agen Create/Update = Superadmin+Supervisi, halaman Daftar Agen + Detail Agen + Update Data Harian
+- [x] **Inventarisasi Tier Agen** (lanjutan 2026-08): entitas `Agen` bernama (2–3 per Gudang, `AgenId`), baris stok per (Agen×Produk), migrasi data `Tier.Agen`→`GudangWilayah`, mock 50% stok gudang dibagi rata + DOT rata (dengan audit Transfer), identitas Create/Update = Superadmin+Supervisi, halaman Daftar Agen + Detail Agen + Update Data Harian perukuran (Opsi C)
+- [x] **Inventarisasi Tier Outlet** (lanjutan 2026-08): entitas `Outlet` bernama (2 per Agen, tanpa limit, `OutletId`), baris stok per (Outlet×Produk), mock 50% stok agen dibagi rata (dengan audit Transfer, outlet agregat lama di-soft-delete), halaman Daftar Outlet + Detail Outlet + Update Data Harian perukuran
 - [x] **Transfer Gudang Wilayah → Agen** (lanjutan 2026-08): modal "Kirim ke Agen" (Superadmin+Supervisi), pilih 1 agen + kuantitas per SKU (3 SKU LPG sekaligus), loop `Transfer` atomic per SKU, overdraft ditolak (fix bug guard overdraft transfer), konservasi terjaga
+- [x] **Transfer Agen → Outlet** (lanjutan 2026-08): modal "Kirim ke Outlet" (Superadmin+Supervisi, di Detail Agen), pilih 1 outlet + qty per SKU, loop `Transfer` atomic per SKU, lintas-agen ditolak
 - [x] **Rev. UI card Gas LPG** (lanjutan 2026-08): 1 card per wilayah berisi 3 ukuran (chip titik warna); detail LPG gabungan 3 ukuran per Ukuran×Tier (route `Lpg`)
 - [x] Fix temuan testing: dashboard card+chart, filter objek interaktif, tombol Detail (enum name), fixture test
 
@@ -89,27 +92,27 @@
 
 ---
 
-## Phase 4 — Modul TSO (BERIKUTNYA — belum ada kode)
+## Phase 4 — Modul TSO
 
 **Deskripsi:** Order Transport Shipping Order Pusat → Gudang Wilayah dari master Mitra TSO; commit di Submit; dampak stok saat keberangkatan; Preview read-only + Draft Invoice PDF idempoten; Update/Delete order.
 
 **Checklist:**
-- [ ] `MitraTso` dimuat dari `seeds/mitra-tso.json` (master, via seed loader)
-- [ ] Halaman form TSO: Mitra (dari master, bukan teks bebas), Jenis Material (enum sama dgn Monitoring), Kuantitas (>0, satuan sesuai material), Tanggal Keberangkatan (tidak lampau)
-- [ ] **Commit di Submit** (T11); submit ganda dicegah (T1/F9)
-- [ ] Dampak stok saat keberangkatan: debit sumber + `RencanaKedatangan` (Next Supply + ETA) di Gudang Wilayah tujuan (T5)
-- [ ] Halaman Preview read-only (tidak mengubah data)
-- [ ] Generate Draft Invoice PDF (QuestPDF, idempoten — regenerate identik, T9) dengan kolom minimal per spec §4.d
-- [ ] Update order (Superadmin+Supervisi), Delete order (Superadmin, soft delete + modal)
-- [ ] Audit log tiap aksi order; role check per mutasi (T7/T8)
-- [ ] Fallback: tak terdaftar 400 (F3), tanggal lampau (F5), gagal PDF (F6), monitoring putus → flag "dampak stok tertunda" + resync (F7/F10), idle (F11), tanpa wewenang (F12)
+- [x] `MitraTso` (3 mitra) dimuat dari `seeds/mitra-tso.json` — `MitraTsoSeeder` upsert, tarif mutable diaudit, snapshot di order (harga dinamis)
+- [x] **Wizard 4 langkah:** (1) Gudang+Obyek+Qty → (2) Rute & Jadwal (Pusat→Gudang, Tgl Keberangkatan ≥today, ETA+7) → (3) Transporter + Estimasi Biaya (`tarif × qty` dari master) → (4) Ringkasan → Submit (`/tso/create` + `/tso/{id}/edit`)
+- [x] **Commit di Submit** (T11); submit ganda dicegah (T1/F9) — dedup key `Mitra+Wilayah+Produk+Qty+Tgl` 1 menit
+- [x] Dampak stok saat keberangkatan: `RencanaKedatangan` (NextSupply=Kuantitas, ETA, Urutan 1..3) di Gudang Wilayah tujuan (T5); `Status FlagTertunda` jika gagal (F7/F10)
+- [x] Halaman Preview read-only (`/tso/{id}`) — 8 kolom §4.d (tidak mengubah data)
+- [x] Generate Draft Invoice PDF (QuestPDF, idempoten — regenerate bytes identical, `CreationDate=CreatedAt`, T9) — kolom: Mitra, Gudang Tujuan, Jenis Material, Kuantitas+satuan, Tgl Keberangkatan, ETA, Nomor Order, Timestamp
+- [x] Update order (Superadmin+Supervisi, `RowVersion` 409 F8), Delete order (Superadmin, soft delete + modal)
+- [x] Audit log tiap aksi order; role check per mutasi (T7/T8) — `RequireAnyRole` di service, `AuthorizeView` di UI
+- [x] `/api/tso` — `MapGroup /api/tso`: `POST /`, `GET /`, `GET /{id}`, `PUT /{id}`, `DELETE /{id}`, `POST /{id}/invoice`, `POST /{id}/resync` — ProblemDetails 400/403/404/409
 
 **Keterangan:**
-- Gerbang: TSO → departure → stok debit + Rencana Kedatangan tercatat; PDF idempoten; role check; simulasi F7.
-- Satuan kanonik material mengikuti modul Monitoring (Tabung / Kiloliter); tolak satuan silang.
-- Konservasi stok: dampak saat **keberangkatan**, bukan saat preview/generate.
-- Open question terkait: TSO wizard 4 langkah + Draft Proposal sidebar (Draft ID `SO-…`, Est. Biaya) — fitur desain, **butuh persetujuan** sebelum dikerjakan (`UI_REFERENCE.md §6`).
-- Hilangkan blocker §"Stok Terjual" (Phase 3 open) jika TSO bergantung pada jalur debit—sebaiknya putuskan mekanisme pengurangan stok **sebelum** Phase 4.
+- Gerbang: TSO→departure→RencanaKedatangan tercatat; PDF idempoten (bytes equal); role (Create Operator, Update Supervisi, Delete Superadmin); F7 FlagTertunda + resync.
+- Satuan kanonik material mengikuti modul Monitoring (Tabung / Kiloliter); tolak satuan silang — `Produk.Satuan()`.
+- Konservasi stok: dampak saat **keberangkatan**, bukan saat preview/generate — `TransportOrderService` → `RencanaKedatangan`.
+- Snapshot harga: `TarifSnapshot`/`EstimasiBiayaSnapshot` disimpan di order (order lama tak berubah saat `Mitra.tarif` naik); CRUD Mitra ditunda Phase 5 (seed-only Phase 4).
+- Deploy PoC: `Dockerfile` multi-stage non-root `USER 1654`, `docker-compose.yml` literal `80:8080` + `443:8081` (self-signed cert `/app/certs`), volume `stockmonitor_data` + `stockmonitor_keys` (DataProtection persist), `HealthCheck /health`.
 
 ---
 
@@ -133,8 +136,9 @@
 
 ## Open Questions Lintas Fase
 
-- [ ] Mekanisme pengurangan stok / "Stok Terjual": opsi **A / B / C / D** (`REVISION_NOTE_stock_reduction.md`)
-- [ ] TSO wizard 4 langkah, Monitoring Agen, Ekspor Laporan, Live Sync, Proyeksi Dampak Stok (fitur desain, `UI_REFERENCE.md §6`)
+- [x] Mekanisme pengurangan stok / "Stok Terjual": **Opsi C `Issue` eksplisit** (`REVISION_NOTE_stock_reduction.md`) — resolved 2026-08
+- [x] TSO wizard 4 langkah — **selesai & terverifikasi** (wizard Gudang→Rute→Transporter→Ringkasan + estimate `tarif×qty`)
+- [ ] Monitoring Agen, Ekspor Laporan, Live Sync, Proyeksi Dampak Stok (fitur desain, `UI_REFERENCE.md §6`)
 - [ ] Rename solution `StockMonitorTso.*` vs tetap
 - [ ] Excel acuan: pakai baru vs cabut (kasus perombakan total domain — belum aktif)
 - [ ] Tracker stok Gudang Pusat untuk cek overdraft TSO (default: **tidak**, hanya `Kuantitas > 0`)

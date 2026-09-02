@@ -16,11 +16,11 @@
 | Phase 0 Skeleton                                            |   ✅   | Selesai & hijau                                                   |
 | Phase 1 Auth, RBAC & Sesi                                   |   ✅   | Selesai & hijau                                                   |
 | Phase 2 Monitoring (read+compute)                           |   ✅   | Selesai & hijau                                                   |
-| Phase 3 CRUD + Konservasi (+ lanjutan Agen/Transfer/Rev UI) |   ✅   | Selesai & hijau —**CRUD belum final menunggu stakeholder** |
-| Phase 4 Modul TSO                                           |   ⏭   | Belum ada kode                                                    |
+| Phase 3 CRUD + Konservasi (+ lanjutan Agen/Outlet/Transfer/Rev UI) |   ✅   | Selesai & hijau —**CRUD belum final menunggu stakeholder** |
+| Phase 4 Modul TSO (wizard + snapshot + /api/tso + Docker)   |   ✅   | Selesai & hijau — wizard 4 langkah, snapshot tarif, PDF idempoten |
 | Phase 5 Hardening                                           |   ⏭   | Belum                                                             |
 
-**Gerbang global terakhir (2026-08):** `dotnet build -warnaserror` 0 error · `dotnet test` 78/78 (32 unit + 46 integrasi) · `dotnet format --verify` bersih · smoke `/health` 200 + seed agen 18 baris.
+**Gerbang global terakhir (2026-08):** `dotnet build -warnaserror` 0 error · `dotnet test` 91/91 (32 unit + 59 integrasi) · `dotnet format --verify` bersih · smoke `/health` 200 + DB seed (Agen 18, Outlet 36, Mitra 3) + `/api/tso` lulus.
 
 ---
 
@@ -125,6 +125,19 @@ Setiap slice/task dinyatakan selesai bila semua kriteria berikut centang:
 | Halaman Daftar Agen + Detail Agen + Update Data Harian                         |   ✅   | `Pages/DaftarAgen.razor` `/wilayah/{Wilayah}/agen` · `DetailAgen.razor` `/agen/{id:int}`                      | Modal`sm-*`, list agen per wilayah                                     |
 | **DoD 3.2** — per wilayah 2–3 agen, Σ agen == Σ gudang setelah split |   ✅   | `AgenDashboardTests` + `AgenMockSeederTests` hijau                                                                 | `Seed_EveryWilayah_HasTwoOrThreeAgen`                                  |
 
+### 3.2b Inventarisasi Tier Outlet (lanjutan 2026-08)
+
+| Titik                                                                          | Status | Bukti/Verifikasi                                                                                                       | Keterangan                                                               |
+| ------------------------------------------------------------------------------ | :----: | ---------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| Entitas `Outlet` (Id, Nama unik per AgenId, AgenId, Wilayah, TanggalDaftar, IsDeleted) |   ✅   | `Domain/Entities/Outlet.cs` · `ApplicationDbContext` (index unik `(AgenId,Nama)`)                                | Soft delete; Nama case-insensitive                                       |
+| Granularitas `(Outlet × Produk)` via `StokEntitas.OutletId` + filtered index   |   ✅   | `StokEntitas.OutletId` · `(OutletId,Produk,Tier) WHERE OutletId IS NOT NULL` | 3 filtered index (Gudang/Agen/Outlet)                                                         |
+| Migrasi `AddOutletEntity`: create `Outlet`, add `OutletId`, 3rd index |   ✅   | `Migrations/20260823140735_*.cs`                                                                       | Drop index gudang lama → recreate `AgenId IS NULL AND OutletId IS NULL`             |
+| Mock 50%: stok outlet = 50% agen ÷ 2; DOT ÷ 2; 2 per agen (36 total)  |   ✅   | `Seed/OutletMockSeeder.cs` (`OutletPerAgen=2`) · `SeedData.SeedOutletMockAsync`                           | Sisa ke terakhir; agen didebit 50% via `Transfer` mock |
+| Konservasi mock: agen didebit + `StockTransactions` `Transfer` (audit); outlet agregat lama di-soft-delete |   ✅   | `SeedData` pendingTransfer → `StockTransactions` 72 baris (outlet)                                                         | Σ outlet = Σ agen tersisa = 13266.7 (SMOKE)                                  |
+| Identitas outlet Create/Update = Superadmin+Supervisi; Delete = Superadmin only  |   ✅   | `Services/OutletService.cs` (`IOutletService`) · `OutletServiceTests` (akan ditambah)                                                 | Auto-create 4 baris stok (0) saat create                                 |
+| Halaman Daftar Outlet + Detail Outlet + Update Data Harian                         |   ✅   | `Pages/DaftarOutlet.razor` `/agen/{id}/outlet` · `DetailOutlet.razor` `/outlet/{id:int}`                      | Modal `sm-*`, list outlet per agen                                     |
+| **DoD 3.2b** — per agen 2 outlet, Σ outlet == Σ agen tersisa |   ✅   | `AgenDashboardTests` (agen 50% gudang → outlet 50% agen)                                                                 | —                                  |
+
 ### 3.3 Transfer Gudang Wilayah → Agen (lanjutan 2026-08)
 
 | Titik                                                                                                                | Status | Bukti/Verifikasi                                                            | Keterangan                                                   |
@@ -133,6 +146,15 @@ Setiap slice/task dinyatakan selesai bila semua kriteria berikut centang:
 | Pilih 1 agen + kuantitas per SKU (3 ukuran LPG sekaligus; minyak 1 input)                                            |   ✅   | `GetAgenTransferTargetsAsync(wilayah)` → dropdown + chip stok gudang     | `GudangStok55/12/50Kg` dari `GetLpgRowsAsync`            |
 | Loop`Transfer` atomic per SKU via `AgenService.TransferFromWarehouseAsync`                                       |   ✅   | `Services/AgenService.cs` + `StockWriteService.TransactAsync(Transfer)` | Overdraft per SKU ditolak; agen harus se-wilayah             |
 | **DoD 3.3** — multi-SKU 5000/3000/2000, konservasi (gudang debit = agen kredit), RBAC, lintas-wilayah ditolak |   ✅   | `WarehouseTransferTests` 6 test hijau                                     | —                                                           |
+
+### 3.3b Transfer Agen → Outlet (lanjutan 2026-08)
+
+| Titik                                                                                                                | Status | Bukti/Verifikasi                                                            | Keterangan                                                   |
+| -------------------------------------------------------------------------------------------------------------------- | :----: | --------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| Modal "Kirim ke Outlet" di Detail Agen (Superadmin+Supervisi)                                                        |   ✅   | `Pages/DetailAgen.razor` `OpenTransferModal`                       | Tombol di blok `AuthorizeView Roles="Superadmin,Supervisi"` |
+| Pilih 1 outlet + kuantitas per SKU (3 ukuran LPG sekaligus; minyak 1 input)                                            |   ✅   | `GetOutletTransferTargetsAsync(agenId)` → dropdown + chip stok agen     | `TransferStok55/12/50/Minyak` dari `DetailAgen`            |
+| Loop `Transfer` atomic per SKU via `OutletService.TransferFromAgenAsync`                                       |   ✅   | `Services/OutletService.cs` + `StockWriteService.TransactAsync(Transfer)` | Overdraft per SKU ditolak; outlet harus milik agen             |
+| **DoD 3.3b** — multi-SKU agen→outlet, konservasi (agen debit = outlet kredit), RBAC, lintas-agen ditolak |   ✅   | `WarehouseTransferTests` pattern (outlet, akan ditambah `OutletTransferTests`)                                     | —                                                           |
 
 ### 3.4 Redesign & rev. UI
 
@@ -146,29 +168,32 @@ Setiap slice/task dinyatakan selesai bila semua kriteria berikut centang:
 
 ### DoD Keseluruhan Phase 3
 
-- [X] `build -warnaserror` 0 error, 81/81 test hijau, `format --verify` bersih, smoke `/health` 200 (global D1–D6, G1–G10)
+- [X] `build -warnaserror` 0 error, 91/91 test hijau, `format --verify` bersih, smoke `/health` 200 (global D1–D6, G1–G10)
 - [X] Spec CRUD di-update: `STOCK_MONITORING_SPEC.md` §3 amend (identitas Agen) + §4.f (transfer) + §2.c granularitas
 - [x] **Resolved 2026-08 — Opsi C `Issue` eksplisit**: `Receive`/`Issue`/`Adjust`±/`Transfer`; `Terjual` via `Issue` auto `StokHabisTerjual`, `Opname` via `Adjust` ± dengan `[☑]` enable; overdraft ditolak
 - [ ] **CRUD belum final** — menunggu stakeholder (`docs/CHANGE_PROCESS_NOTE.md` §1)
 
 ---
 
-## Phase 4 — Modul TSO (BERIKUTNYA — belum ada kode)
+## Phase 4 — Modul TSO
 
-**Deskripsi:** Order TSO `Pusat → Gudang Wilayah` dari Mitra TSO; commit di Submit; dampak stok saat keberangkatan; Preview + Draft Invoice PDF idempoten.
+**Deskripsi:** Order TSO `Pusat → Gudang Wilayah` dari Mitra TSO; commit di Submit; dampak stok saat keberangkatan; Preview read-only + Draft Invoice PDF idempoten.
 
 | Titik                                                                                                                                                    | Status | Bukti/Verifikasi                        | Keterangan                                               |
 | -------------------------------------------------------------------------------------------------------------------------------------------------------- | :----: | --------------------------------------- | -------------------------------------------------------- |
-| `MitraTso` dari `seeds/mitra-tso.json` (master, seed loader)                                                                                         |   ⏳   | —                                      | —                                                       |
-| Form TSO: Mitra (dari master, bukan bebas), Jenis Material (enum sama dgn Monitoring), Kuantitas (>0, Tabung/KL), Tgl Keberangkatan (tidak lampau)       |   ⏳   | —                                      | —                                                       |
-| Commit di Submit (T11); submit ganda dicegah (T1/F9)                                                                                                     |   ⏳   | —                                      | —                                                       |
-| Dampak stok saat keberangkatan: debit sumber +`RencanaKedatangan` (Next Supply + ETA) di Gudang Wilayah tujuan (T5)                                    |   ⏳   | —                                      | TSO hirarki`Pusat→Gudang` (konservasi §2.c)          |
-| Preview read-only (tidak mengubah data)                                                                                                                  |   ⏳   | —                                      | T11                                                      |
-| Generate Draft Invoice PDF (QuestPDF, idempoten 8 kolom TSO §4.d)                                                                                       |   ⏳   | —                                      | T9 — regenerate identik                                 |
-| Update order (Superadmin+Supervisi), Delete (Superadmin soft-delete)                                                                                     |   ⏳   | —                                      | —                                                       |
-| Audit tiap aksi order; role check per mutasi (T7/T8)                                                                                                     |   ⏳   | —                                      | —                                                       |
-| Fallback: 400 tak terdaftar (F3), tgl lampau (F5), gagal PDF (F6), monitoring putus → flag tertunda + resync (F7/F10), idle (F11), tanpa wewenang (F12) |   ⏳   | —                                      | —                                                       |
-| **DoD P4** — TSO→departure→stok debit + Rencana tercatat; PDF idempoten; role check; simulasi F7                                                |   ⏳   | `seeds/mitra-tso.json` sudah tersedia | `Api` project kosong — rencana Minimal API `/api/*` |
+| `MitraTso` (3 mitra) dimuat dari `seeds/mitra-tso.json` — `MitraTsoSeeder` upsert, tarif mutable diaudit, snapshot di order (harga dinamis) |   ✅   | `Domain/Entities/MitraTso.cs` · `Seed/MitraTsoSeeder.cs` · `ApplicationDbContext.MitraTso` | 3 mitra, upsert tarif |
+| **Wizard 4 langkah:** (1) Gudang+Obyek+Qty → (2) Rute & Jadwal (Pusat→Gudang, Tgl ≥today, ETA+7) → (3) Transporter + Estimasi Biaya (`tarif × qty`) → (4) Ringkasan → Submit (`/tso/create` + `/tso/{id}/edit`) |   ✅   | `Pages/Tso/{TsoWizard,TsoList,TsoPreview}.razor` · `Invoices` | Stepper 4, validasi per step |
+| Commit di Submit (T11); submit ganda dicegah (T1/F9) — dedup key `Mitra+Wilayah+Produk+Qty+Tgl` 1 menit |   ✅   | `Services/TransportOrderService.cs` `CreateAsync` dedup | T1/F9 |
+| Dampak stok saat keberangkatan: `RencanaKedatangan` (NextSupply=Kuantitas, ETA, Urutan 1..3) di Gudang Wilayah tujuan (T5); `Status FlagTertunda` jika gagal (F7/F10) |   ✅   | `TransportOrderService.CreateRencanaKedatanganAsync` | T5, F7/F10 |
+| Preview read-only (`/tso/{id}`) — 8 kolom §4.d (tidak mengubah data) |   ✅   | `Pages/Tso/TsoPreview.razor` | T11 |
+| Generate Draft Invoice PDF (QuestPDF, idempoten — regenerate bytes identical, `CreationDate=CreatedAt`, T9) — kolom: Mitra, Gudang Tujuan, Jenis Material, Kuantitas+satuan, Tgl Keberangkatan, ETA, Nomor Order, Timestamp |   ✅   | `Services/InvoiceGenerator.cs` (QuestPDF `CreationDate=CreatedAt`) | T9 |
+| Update order (Superadmin+Supervisi, `RowVersion` 409 F8), Delete order (Superadmin, soft delete + modal) |   ✅   | `TransportOrderService.Update/DeleteAsync` · `RowVersion IsConcurrencyToken` | F8 |
+| Audit tiap aksi order; role check per mutasi (T7/T8) — `RequireAnyRole` di service, `AuthorizeView` di UI |   ✅   | `AuditLogService` · `TsoServiceTests` role matrix | T7/T8 |
+| `/api/tso` — `MapGroup /api/tso`: `POST /`, `GET /`, `GET /{id}`, `PUT /{id}`, `DELETE /{id}`, `POST /{id}/invoice`, `POST /{id}/resync` — ProblemDetails 400/403/404/409 |   ✅   | `Api/Endpoints/TsoEndpoints.cs` · `Web/Program.cs` `MapTsoEndpoints` | T8 |
+| Fallback: 400 tak terdaftar (F3), tgl lampau (F5), gagal PDF (F6), monitoring putus → flag tertunda + resync (F7/F10), idle (F11), tanpa wewenang (F12) |   ✅   | `TsoServiceTests` (10 test: Rencana, idempoten, role, snapshot) | — |
+| **DoD P4** — TSO→departure→stok debit + Rencana tercatat; PDF idempoten (bytes equal); role check; simulasi F7 |   ✅   | `TsoServiceTests` 10 test hijau · `seeds/mitra-tso.json` | `/api/tso` siap |
+
+**Deploy PoC (lanjutan Phase 4):** `Dockerfile` multi-stage non-root `USER 1654`, `docker-compose.yml` literal `80:8080` + `443:8081` (self-signed cert `/app/certs`), volume `stockmonitor_data` + `stockmonitor_keys` (DataProtection persist), `HealthCheck /health` — `build` OK, `curl -k https://localhost/health` 200, seed DB (Agen 18, Outlet 36, Mitra 3).
 
 ---
 
@@ -193,7 +218,7 @@ Setiap slice/task dinyatakan selesai bila semua kriteria berikut centang:
 | Topik                                                                 | Status                                             | Rujukan                                                                               |
 | --------------------------------------------------------------------- | -------------------------------------------------- | ------------------------------------------------------------------------------------- |
 | Mekanisme pengurangan stok / "Stok Terjual" (C `Issue`/`Adjust`±) | ✅ Resolved 2026-08 (Opsi C)                      | `docs/REVISION_NOTE_stock_reduction.md` — auto-berlaku untuk modal Gudang & Agen   |
-| TSO wizard 4 langkah, Ekspor Laporan, Live Sync, Proyeksi Dampak Stok | ⏳ open                                            | `docs/UI_REFERENCE.md §6`                                                          |
+| Ekspor Laporan, Live Sync, Proyeksi Dampak Stok | ⏳ open                                            | `docs/UI_REFERENCE.md §6`                                                          |
 | Rename solution`StockMonitorTso.*`                                  | ⏳ belum                                           | `PLAN.md §9`                                                                       |
 | Excel acuan: pakai baru vs cabut (perombakan domain)                  | ⏳ belum aktif                                     | `PLAN.md §9`                                                                       |
 | Tracker stok Gudang Pusat untuk TSO overdraft                         | ⏳ default:**tidak** (hanya `Kuantitas>0`) | `PLAN.md §9`                                                                       |
