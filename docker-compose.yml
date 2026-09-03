@@ -8,6 +8,7 @@ services:
       - "443:8081"
     volumes:
       - stockmonitor_data:/app/data
+      - stockmonitor_keys:/app/keys
     env_file:
       - .env
     environment:
@@ -16,3 +17,4 @@ services:
 
 volumes:
   stockmonitor_data:
+  stockmonitor_keys:

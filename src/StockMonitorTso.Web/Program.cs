@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using StockMonitorTso.Domain.Abstractions;
@@ -50,6 +51,10 @@ builder.Services.AddIdentityCore<ApplicationUser>(options =>
     .AddEntityFrameworkStores<ApplicationDbContext>()
     .AddSignInManager()
     .AddDefaultTokenProviders();
+
+builder.Services.AddDataProtection()
+    .PersistKeysToFileSystem(new DirectoryInfo("/app/keys"))
+    .SetApplicationName("StockMonitorTso");
 
 // Switchable active role: hanya role aktif yang menjadi klaim role (STOCK §6.2).
 builder.Services.AddScoped<IUserClaimsPrincipalFactory<ApplicationUser>, ActiveRoleClaimsPrincipalFactory>();

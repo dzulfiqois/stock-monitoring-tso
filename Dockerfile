@@ -19,10 +19,11 @@ WORKDIR /app
 
 # siapkan user non-root + folder data/certs + self-signed cert untuk HTTPS PoC
 USER root
+
 RUN apt-get update \
     && apt-get install -y --no-install-recommends openssl \
     && rm -rf /var/lib/apt/lists/* \
-    && mkdir -p /app/data /app/certs \
+    && mkdir -p /app/data /app/keys /app/certs \
     && openssl req -x509 -newkey rsa:2048 -nodes -keyout /app/certs/aspnetapp.key -out /app/certs/aspnetapp.crt -days 365 -subj "/CN=localhost" \
     && openssl pkcs12 -export -out /app/certs/aspnetapp.pfx -inkey /app/certs/aspnetapp.key -in /app/certs/aspnetapp.crt -passout pass:poctso \
     && rm /app/certs/aspnetapp.key /app/certs/aspnetapp.crt \
