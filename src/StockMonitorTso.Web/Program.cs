@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -32,6 +33,19 @@ builder.Services.AddAuthentication(options =>
         {
             cookie.ExpireTimeSpan = TimeSpan.FromMinutes(15);
             cookie.SlidingExpiration = true;
+            // Single-URL architecture: login surface lives at "/" so unauthenticated
+            // challenges must redirect there (default "/Account/Login" would 404).
+            cookie.LoginPath = "/";
+            // Single-URL architecture: strip the framework's automatic ?ReturnUrl=<original>
+            // query so the address bar stays clean after an auth challenge.
+            cookie.Events = new CookieAuthenticationEvents
+            {
+                OnRedirectToLogin = ctx =>
+                {
+                    ctx.Response.Redirect(ctx.Request.PathBase + "/");
+                    return Task.CompletedTask;
+                },
+            };
         });
     });
 

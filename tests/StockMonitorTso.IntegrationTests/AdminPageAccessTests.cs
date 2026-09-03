@@ -25,7 +25,7 @@ public class AdminPageAccessTests : IClassFixture<TestWebApplicationFactory>
         var response = await client.GetAsync("/admin/users");
 
         response.StatusCode.Should().Be(HttpStatusCode.Redirect);
-        response.Headers.Location?.ToString().Should().Contain("Account/Login");
+        response.Headers.Location?.ToString().Should().EndWith("/");
     }
 
     [Fact]
@@ -58,7 +58,7 @@ public class AdminPageAccessTests : IClassFixture<TestWebApplicationFactory>
 
     private static async Task LoginAsync(HttpClient client, string email, string password)
     {
-        var loginPage = await client.GetAsync("/Account/Login");
+        var loginPage = await client.GetAsync("/");
         loginPage.StatusCode.Should().Be(HttpStatusCode.OK);
         var html = await loginPage.Content.ReadAsStringAsync();
 
@@ -76,7 +76,7 @@ public class AdminPageAccessTests : IClassFixture<TestWebApplicationFactory>
             ["_handler"] = "login",
         });
 
-        var response = await client.PostAsync("/Account/Login", form);
+        var response = await client.PostAsync("/", form);
         if (response.StatusCode == HttpStatusCode.BadRequest)
         {
             var body = await response.Content.ReadAsStringAsync();
