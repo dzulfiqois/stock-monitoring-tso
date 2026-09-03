@@ -1,0 +1,15 @@
+@page "/"
+@layout StockMonitorTso.Web.Components.Layout.BlankLayout
+
+<AuthorizeView>
+    <Authorized>
+        <LayoutView Layout="typeof(Layout.MainLayout)">
+            <Dashboard />
+        </LayoutView>
+    </Authorized>
+    <NotAuthorized>
+        <LayoutView Layout="typeof(Account.Shared.LoginLayout)">
+            <StockMonitorTso.Web.Components.Account.Pages.LoginForm />
+        </LayoutView>
+    </NotAuthorized>
+</AuthorizeView>

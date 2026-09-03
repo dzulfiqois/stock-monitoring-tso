@@ -1,12 +1,10 @@
-﻿@page "/"
-@attribute [Authorize]
 @rendermode InteractiveServer
 
 @using Microsoft.AspNetCore.Authorization
 @using StockMonitorTso.Domain.Entities
 @using StockMonitorTso.Infrastructure.Services
 
-@inject IStockDashboardService Dashboard
+@inject IStockDashboardService StockDashboard
 
 <PageTitle>Ringkasan Dashboard</PageTitle>
 
@@ -190,7 +188,7 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        ringkasan = await Dashboard.GetRingkasanAsync();
+        ringkasan = await StockDashboard.GetRingkasanAsync();
     }
 
     private static string FormatKl(decimal? value) => value?.ToString("0.###") ?? "-";

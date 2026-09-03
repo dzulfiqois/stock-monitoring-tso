@@ -35,7 +35,7 @@
 
     <AuthorizeView>
         <Authorized>
-            <ActiveRoleSwitcher />
+            <ActiveRoleSwitcher @rendermode="InteractiveServer" />
             <NavLink class="sm-nav-item" href="Account/Manage">
                 <span class="material-symbols-outlined">account_circle</span> @context.User.Identity?.Name
             </NavLink>
@@ -48,7 +48,7 @@
             </form>
         </Authorized>
         <NotAuthorized>
-            <NavLink class="sm-nav-item" href="Account/Login" ActiveClass="active">
+            <NavLink class="sm-nav-item" href="" Match="NavLinkMatch.All" ActiveClass="active">
                 <span class="material-symbols-outlined">login</span> Login
             </NavLink>
         </NotAuthorized>
