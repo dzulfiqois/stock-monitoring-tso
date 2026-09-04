@@ -1,4 +1,6 @@
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using StockMonitorTso.Domain.Abstractions;
@@ -32,6 +34,19 @@ builder.Services.AddAuthentication(options =>
         {
             cookie.ExpireTimeSpan = TimeSpan.FromMinutes(15);
             cookie.SlidingExpiration = true;
+            // Single-URL architecture: login surface lives at "/" so unauthenticated
+            // challenges must redirect there (default "/Account/Login" would 404).
+            cookie.LoginPath = "/";
+            // Single-URL architecture: strip the framework's automatic ?ReturnUrl=<original>
+            // query so the address bar stays clean after an auth challenge.
+            cookie.Events = new CookieAuthenticationEvents
+            {
+                OnRedirectToLogin = ctx =>
+                {
+                    ctx.Response.Redirect(ctx.Request.PathBase + "/");
+                    return Task.CompletedTask;
+                },
+            };
         });
     });
 
@@ -51,6 +66,10 @@ builder.Services.AddIdentityCore<ApplicationUser>(options =>
     .AddSignInManager()
     .AddDefaultTokenProviders();
 
+builder.Services.AddDataProtection()
+    .PersistKeysToFileSystem(new DirectoryInfo("/app/keys"))
+    .SetApplicationName("StockMonitorTso");
+
 // Switchable active role: hanya role aktif yang menjadi klaim role (STOCK §6.2).
 builder.Services.AddScoped<IUserClaimsPrincipalFactory<ApplicationUser>, ActiveRoleClaimsPrincipalFactory>();
 
@@ -58,6 +77,7 @@ builder.Services.AddScoped<IAuditLogService, AuditLogService>();
 builder.Services.AddScoped<IUserAdminService, UserAdminService>();
 builder.Services.AddScoped<IAgenService, AgenService>();
 builder.Services.AddScoped<IOutletService, OutletService>();
+builder.Services.AddScoped<IMitraService, MitraService>();
 builder.Services.AddScoped<ITransportOrderService, TransportOrderService>();
 builder.Services.AddScoped<IStockDashboardService, StockDashboardService>();
 builder.Services.AddScoped<IStockWriteService, StockWriteService>();
@@ -87,7 +107,7 @@ else
     app.UseHsts();
 }
 
-app.UseHttpsRedirection();
+// app.UseHttpsRedirection();
 
 app.UseStaticFiles();
 app.UseAntiforgery();
@@ -96,6 +116,7 @@ app.MapHealthChecks("/health");
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 app.MapTsoEndpoints();
+app.MapMitraEndpoints();
 
 // Add additional endpoints required by the Identity /Account Razor components.
 app.MapAdditionalIdentityEndpoints();

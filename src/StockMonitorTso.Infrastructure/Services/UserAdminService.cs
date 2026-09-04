@@ -113,6 +113,84 @@ public sealed class UserAdminService(
         }, ct);
     }
 
+    public async Task<string> CreateUserAsync(
+        ClaimsPrincipal actor,
+        string email,
+        string password,
+        IReadOnlyList<string> roles,
+        string activeRole,
+        CancellationToken ct = default)
+    {
+        RequireSuperadmin(actor);
+
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            throw new InvalidOperationException("Email wajib diisi.");
+        }
+        if (string.IsNullOrWhiteSpace(password))
+        {
+            throw new InvalidOperationException("Password wajib diisi.");
+        }
+        if (roles is null || roles.Count == 0)
+        {
+            throw new InvalidOperationException("Minimal satu role harus dipilih.");
+        }
+        if (string.IsNullOrWhiteSpace(activeRole) || !roles.Contains(activeRole))
+        {
+            throw new InvalidOperationException("Role aktif harus salah satu role yang dipilih.");
+        }
+
+        var normalizedEmail = email.Trim();
+        if (await userManager.FindByEmailAsync(normalizedEmail) is not null)
+        {
+            throw new InvalidOperationException($"Email '{normalizedEmail}' sudah terdaftar.");
+        }
+
+        foreach (var role in roles)
+        {
+            if (!await roleManager.RoleExistsAsync(role))
+            {
+                throw new InvalidOperationException($"Role '{role}' tidak terdaftar.");
+            }
+        }
+
+        var user = new ApplicationUser
+        {
+            UserName = normalizedEmail,
+            Email = normalizedEmail,
+            EmailConfirmed = true,
+            ActiveRoleName = activeRole,
+        };
+
+        var createResult = await userManager.CreateAsync(user, password);
+        if (!createResult.Succeeded)
+        {
+            throw new InvalidOperationException(
+                $"Gagal membuat user: {string.Join("; ", createResult.Errors.Select(e => e.Description))}");
+        }
+
+        var addRolesResult = await userManager.AddToRolesAsync(user, roles);
+        if (!addRolesResult.Succeeded)
+        {
+            throw new InvalidOperationException(
+                $"User dibuat, namun gagal menetapkan role: {string.Join("; ", addRolesResult.Errors.Select(e => e.Description))}");
+        }
+
+        await auditLog.LogAsync(new AuditLog
+        {
+            ActorUserId = userManager.GetUserId(actor),
+            ActorEmail = userManager.GetUserName(actor),
+            ActorRole = GetActiveRole(actor),
+            Action = "CreateUser",
+            EntityType = "ApplicationUser",
+            EntityId = user.Id,
+            After = string.Join(",", roles),
+            Detail = $"Email={normalizedEmail}; ActiveRole={activeRole}",
+        }, ct);
+
+        return user.Id;
+    }
+
     private static void RequireSuperadmin(ClaimsPrincipal actor)
     {
         if (!actor.IsInRole(Superadmin))

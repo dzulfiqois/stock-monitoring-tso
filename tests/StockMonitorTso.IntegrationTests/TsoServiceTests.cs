@@ -114,8 +114,8 @@ public class TsoServiceTests : IClassFixture<TestWebApplicationFactory>
         var service = scope.ServiceProvider.GetRequiredService<ITransportOrderService>();
         var req = new CreateTransportOrderRequest
         {
-            MitraId = "MT-001",
-            WilayahTujuan = Wilayah.Maluku,
+            MitraId = "MT-003",
+            WilayahTujuan = Wilayah.PapuaTengah,
             Produk = Produk.Lpg5_5Kg,
             Kuantitas = 50,
             TanggalKeberangkatan = DateTime.Today.AddDays(2),
@@ -186,8 +186,8 @@ public class TsoServiceTests : IClassFixture<TestWebApplicationFactory>
         var service = scope.ServiceProvider.GetRequiredService<ITransportOrderService>();
         var order = await service.CreateAsync(Principal("Operator"), new CreateTransportOrderRequest
         {
-            MitraId = "MT-002",
-            WilayahTujuan = Wilayah.PapuaBarat,
+            MitraId = "MT-003",
+            WilayahTujuan = Wilayah.PapuaTengah,
             Produk = Produk.Lpg12Kg,
             Kuantitas = 100,
             TanggalKeberangkatan = DateTime.Today.AddDays(1),
@@ -215,10 +215,13 @@ public class TsoServiceTests : IClassFixture<TestWebApplicationFactory>
         });
         var snapshotTarif = order.TarifSnapshot;
 
-        // simulate price change in master
-        var mitra = await db.MitraTso.FirstAsync(m => m.Id == "MT-003");
+        // simulate price change in master (per-product tarif for Lpg5_5Kg)
+        var mitra = await db.MitraTso.Include(m => m.Tarifs).FirstAsync(m => m.Id == "MT-003");
         var originalTarif = mitra.Tarif;
+        var tarifRow = mitra.Tarifs.First(t => t.Produk == Produk.Lpg5_5Kg);
+        var originalPerProduk = tarifRow.Tarif;
         mitra.Tarif = 999999;
+        tarifRow.Tarif = 999999;
         await db.SaveChangesAsync();
 
         try
@@ -227,7 +230,7 @@ public class TsoServiceTests : IClassFixture<TestWebApplicationFactory>
             orderReload!.TarifSnapshot.Should().Be(snapshotTarif);
             orderReload.TarifSnapshot.Should().NotBe(999999);
 
-            // new order should pick new price
+            // new order should pick new price (per-product)
             var order2 = await service.CreateAsync(Principal("Operator"), new CreateTransportOrderRequest
             {
                 MitraId = "MT-003",
@@ -241,6 +244,7 @@ public class TsoServiceTests : IClassFixture<TestWebApplicationFactory>
         finally
         {
             mitra.Tarif = originalTarif;
+            tarifRow.Tarif = originalPerProduk;
             await db.SaveChangesAsync();
         }
     }

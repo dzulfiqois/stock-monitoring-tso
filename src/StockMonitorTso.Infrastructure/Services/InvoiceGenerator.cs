@@ -41,10 +41,14 @@ public sealed class InvoiceGenerator
                     table.Cell().Element(CellStyle).Text(order.RuteTujuan);
 
                     table.Cell().Element(CellStyle).Text("Jenis Material");
-                    table.Cell().Element(CellStyle).Text(order.Produk.DisplayName());
+                    table.Cell().Element(CellStyle).Text(order.Details.Count > 0
+                        ? string.Join(", ", order.Details.Select(d => d.Produk.DisplayName()))
+                        : order.Produk.DisplayName());
 
                     table.Cell().Element(CellStyle).Text("Kuantitas + Satuan");
-                    table.Cell().Element(CellStyle).Text($"{order.Kuantitas.ToString("0.##")} {order.Satuan}");
+                    table.Cell().Element(CellStyle).Text(order.Details.Count > 0
+                        ? string.Join(", ", order.Details.Select(d => $"{d.Kuantitas.ToString("0.##")} {d.Produk.Satuan()}"))
+                        : $"{order.Kuantitas.ToString("0.##")} {order.Satuan}");
 
                     table.Cell().Element(CellStyle).Text("Tanggal Keberangkatan");
                     table.Cell().Element(CellStyle).Text(order.TanggalKeberangkatan.ToString("dd MMM yyyy"));

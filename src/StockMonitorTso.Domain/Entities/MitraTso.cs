@@ -22,7 +22,10 @@ public sealed class MitraTso
 
     public bool Active { get; set; }
 
+    /// <summary>Tarif legacy (single). Tetap untuk kompatibilitas, tapi per-jenis ada di <see cref="Tarifs"/>.</summary>
     public decimal Tarif { get; set; }
 
     public string SatuanTarif { get; set; } = "";
+
+    public ICollection<MitraTarif> Tarifs { get; set; } = new List<MitraTarif>();
 }

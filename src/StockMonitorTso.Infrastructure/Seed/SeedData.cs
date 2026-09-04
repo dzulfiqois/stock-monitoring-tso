@@ -294,7 +294,7 @@ public static class SeedData
         var mitras = MitraTsoSeeder.Load(mitraPath);
         foreach (var mitra in mitras)
         {
-            var existing = await db.MitraTso.FirstOrDefaultAsync(m => m.Id == mitra.Id);
+            var existing = await db.MitraTso.Include(m => m.Tarifs).FirstOrDefaultAsync(m => m.Id == mitra.Id);
             if (existing is null)
             {
                 db.MitraTso.Add(mitra);
@@ -312,6 +312,19 @@ public static class SeedData
                 existing.Active = mitra.Active;
                 existing.Tarif = mitra.Tarif;
                 existing.SatuanTarif = mitra.SatuanTarif;
+                foreach (var tarif in mitra.Tarifs)
+                {
+                    var existTarif = existing.Tarifs.FirstOrDefault(t => t.Produk == tarif.Produk);
+                    if (existTarif is null)
+                    {
+                        existing.Tarifs.Add(new MitraTarif { MitraId = existing.Id, Produk = tarif.Produk, Tarif = tarif.Tarif, SatuanTarif = tarif.SatuanTarif });
+                    }
+                    else
+                    {
+                        existTarif.Tarif = tarif.Tarif;
+                        existTarif.SatuanTarif = tarif.SatuanTarif;
+                    }
+                }
             }
         }
 

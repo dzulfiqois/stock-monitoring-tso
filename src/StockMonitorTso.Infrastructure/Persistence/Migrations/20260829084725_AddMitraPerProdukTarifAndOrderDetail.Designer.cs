@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using StockMonitorTso.Infrastructure.Persistence;
 
@@ -10,9 +11,11 @@ using StockMonitorTso.Infrastructure.Persistence;
 namespace StockMonitorTso.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260829084725_AddMitraPerProdukTarifAndOrderDetail")]
+    partial class AddMitraPerProdukTarifAndOrderDetail
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "8.0.30");
@@ -256,7 +259,7 @@ namespace StockMonitorTso.Infrastructure.Persistence.Migrations
                     b.HasIndex("MitraId", "Produk")
                         .IsUnique();
 
-                    b.ToTable("MitraTarifs", (string)null);
+                    b.ToTable("MitraTarif");
                 });
 
             modelBuilder.Entity("StockMonitorTso.Domain.Entities.MitraTso", b =>
@@ -629,7 +632,7 @@ namespace StockMonitorTso.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("OrderId");
 
-                    b.ToTable("TransportOrderDetails", (string)null);
+                    b.ToTable("TransportOrderDetail");
                 });
 
             modelBuilder.Entity("StockMonitorTso.Infrastructure.Persistence.ApplicationUser", b =>

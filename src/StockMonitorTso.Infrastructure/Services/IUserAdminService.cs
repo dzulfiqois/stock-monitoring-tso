@@ -14,4 +14,12 @@ public interface IUserAdminService
     Task RemoveRoleAsync(ClaimsPrincipal actor, string userId, string roleName, CancellationToken ct = default);
 
     Task SetPasswordAsync(ClaimsPrincipal actor, string userId, string newPassword, CancellationToken ct = default);
+
+    Task<string> CreateUserAsync(
+        ClaimsPrincipal actor,
+        string email,
+        string password,
+        IReadOnlyList<string> roles,
+        string activeRole,
+        CancellationToken ct = default);
 }
