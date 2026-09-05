@@ -1,20 +1,73 @@
 services:
-  web:
-    build: .
-    image: stockmonitor-tso:latest
-    container_name: stockmonitor-web
-    ports:
-      - "80:8080"
-      - "443:8081"
-    volumes:
-      - stockmonitor_data:/app/data
-      - stockmonitor_keys:/app/keys
-    env_file:
-      - .env
+  postgres:
+    image: postgres:16-alpine
+    container_name: stockmonitor-postgres
     environment:
-      - ConnectionStrings__DefaultConnection=DataSource=/app/data/stockmonitor.db;Cache=Shared
+      POSTGRES_USER: stockmonitor
+      POSTGRES_PASSWORD: stockmonitor
+      POSTGRES_DB: stockmonitor
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./deploy/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U stockmonitor -d stockmonitor"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+
+  api:
+    build:
+      context: .
+      dockerfile: src/StockMonitorTso.Api/Dockerfile
+    image: stockmonitor-api:latest
+    container_name: stockmonitor-api
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=stockmonitor;Username=stockmonitor;Password=stockmonitor
+      Jwt__Issuer: stockmonitor-api
+      Jwt__Audience: stockmonitor-client
+      Jwt__Key: ${JWT_KEY:-dev-only-signing-key-stockmonitor-local-0123456789abcdef}
+      App__BaseUrl: ${APP_BASE_URL:-}
+      Seed__SkipStock: ${SEED_SKIP_STOCK:-false}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/health | grep -q Healthy"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    image: stockmonitor-frontend:latest
+    container_name: stockmonitor-frontend
+    depends_on:
+      - api
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:alpine
+    container_name: stockmonitor-nginx
+    volumes:
+      - ./deploy/nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    ports:
+      - "80:80"
+    depends_on:
+      - api
+      - frontend
     restart: unless-stopped
 
 volumes:
-  stockmonitor_data:
-  stockmonitor_keys:
+  pgdata:

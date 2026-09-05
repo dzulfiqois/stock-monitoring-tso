@@ -8,10 +8,10 @@ using StockMonitorTso.Infrastructure.Services;
 
 namespace StockMonitorTso.IntegrationTests;
 
-public class TsoServiceTests : IClassFixture<TestWebApplicationFactory>
+public class TsoServiceTests : IClassFixture<TestApiWebApplicationFactoryWithStock>
 {
-    private readonly TestWebApplicationFactory _factory;
-    public TsoServiceTests(TestWebApplicationFactory factory) => _factory = factory;
+    private readonly TestApiWebApplicationFactoryWithStock _factory;
+    public TsoServiceTests(TestApiWebApplicationFactoryWithStock factory) => _factory = factory;
 
     private static ClaimsPrincipal Principal(string role) =>
         new(new ClaimsIdentity(new[] { new Claim(ClaimTypes.Role, role) }, "Test"));

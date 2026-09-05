@@ -107,6 +107,9 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.Property(e => e.RuteTujuan).HasMaxLength(64);
             entity.Property(e => e.Status).HasConversion<string>().HasMaxLength(32);
             entity.Property(e => e.RowVersion).IsConcurrencyToken();
+            entity.Property(e => e.CreatedAt).HasColumnType("timestamp with time zone");
+            entity.Property(e => e.UpdatedAt).HasColumnType("timestamp with time zone");
+            entity.Property(e => e.InvoiceGeneratedAt).HasColumnType("timestamp with time zone");
             entity.HasIndex(e => new { e.MitraId, e.WilayahTujuan, e.Produk, e.Kuantitas, e.TanggalKeberangkatan });
         });
 
@@ -126,13 +129,13 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
                 .OnDelete(DeleteBehavior.Restrict);
             entity.HasIndex(e => new { e.Wilayah, e.Produk, e.Tier })
                 .IsUnique()
-                .HasFilter("[AgenId] IS NULL AND [OutletId] IS NULL");
+                .HasFilter("\"AgenId\" IS NULL AND \"OutletId\" IS NULL");
             entity.HasIndex(e => new { e.AgenId, e.Produk, e.Tier })
                 .IsUnique()
-                .HasFilter("[AgenId] IS NOT NULL");
+                .HasFilter("\"AgenId\" IS NOT NULL");
             entity.HasIndex(e => new { e.OutletId, e.Produk, e.Tier })
                 .IsUnique()
-                .HasFilter("[OutletId] IS NOT NULL");
+                .HasFilter("\"OutletId\" IS NOT NULL");
         });
 
         builder.Entity<RencanaKedatangan>(entity =>

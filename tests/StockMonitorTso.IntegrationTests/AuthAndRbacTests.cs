@@ -4,15 +4,16 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using StockMonitorTso.Infrastructure.Persistence;
+using StockMonitorTso.Api.Services;
 using StockMonitorTso.Infrastructure.Services;
 
 namespace StockMonitorTso.IntegrationTests;
 
-public class AuthAndRbacTests : IClassFixture<TestWebApplicationFactory>
+public class AuthAndRbacTests : IClassFixture<TestApiWebApplicationFactory>
 {
-    private readonly TestWebApplicationFactory _factory;
+    private readonly TestApiWebApplicationFactory _factory;
 
-    public AuthAndRbacTests(TestWebApplicationFactory factory)
+    public AuthAndRbacTests(TestApiWebApplicationFactory factory)
     {
         _factory = factory;
     }
@@ -112,13 +113,20 @@ public class AuthAndRbacTests : IClassFixture<TestWebApplicationFactory>
     }
 
     [Fact]
-    public void IdleTimeout_ConfiguredTo15Minutes()
+    public async Task AccessToken_ExpiryIs15Minutes()
     {
         using var scope = _factory.Services.CreateScope();
-        var options = scope.ServiceProvider.GetRequiredService<IOptionsMonitor<Microsoft.AspNetCore.Authentication.Cookies.CookieAuthenticationOptions>>();
+        var tokenService = scope.ServiceProvider.GetRequiredService<ITokenService>();
+        var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
 
-        var cookieOptions = options.Get(IdentityConstants.ApplicationScheme);
-        cookieOptions.ExpireTimeSpan.Should().Be(TimeSpan.FromMinutes(15));
-        cookieOptions.SlidingExpiration.Should().BeTrue();
+        var user = await userManager.FindByEmailAsync("superadmin@stockmonitor.local");
+        user.Should().NotBeNull();
+
+        var (accessToken, _) = tokenService.IssueAccessToken(user, new List<string> { "Superadmin" }, "Superadmin");
+        var jwt = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler().ReadJwtToken(accessToken);
+
+        var lifetime = jwt.ValidTo - jwt.ValidFrom;
+        lifetime.Should().Be(TimeSpan.FromMinutes(15));
+        jwt.Claims.Should().Contain(c => c.Type == System.Security.Claims.ClaimTypes.Role && c.Value == "Superadmin");
     }
 }

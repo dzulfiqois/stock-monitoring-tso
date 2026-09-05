@@ -4,24 +4,29 @@ Each Level 1 process that carries business logic is exploded into numbered steps
 Guards that reject a request are drawn as diamonds; rejection leaves all stores
 unchanged.
 
-## 1.0 — Autentikasi dan Sesi
+## 1.0 — Autentikasi dan Sesi (JWT bearer)
 
 ```mermaid
 flowchart TB
-    A1("1.1 - Validate credentials")
+    A1("1.1 - POST /api/auth/login - validate credentials via Identity Core")
     A2{"complete and correct?"}
     A3("1.2 - Load user roles")
     A4("1.3 - Set active role (chosen at login, or first role as default)")
-    A5("1.4 - Issue cookie, 15 min sliding idle")
-    A6("1.5 - Switch active role mid-session (only the active role is emitted as claim)")
-    A7("1.6 - Idle expiry or explicit logout, back to login")
+    A5("1.4 - Issue access token (15-min expiry, active-role claim) + refresh token")
+    A6("1.5 - POST /api/auth/refresh on activity - new access token, sliding 15-min idle")
+    A7("1.6 - POST /api/auth/switch-role - validate membership, re-issue token with the new active-role claim")
+    A8("1.7 - POST /api/auth/logout revokes the refresh; an expired access token ends access - back to login")
 
     A1 --> A2
-    A2 -- "no - notice shown" --> A1
+    A2 -- "no - ProblemDetails" --> A1
     A2 -- "yes" --> A3 --> A4 --> A5
-    A5 --> A6 --> A6
-    A5 --> A7
+    A5 --> A6
+    A6 --> A6
     A6 --> A7
+    A7 --> A6
+    A5 --> A8
+    A6 --> A8
+    A7 --> A8
 ```
 
 ## 2.0 — Manajemen User dan Role (Superadmin only)
@@ -90,12 +95,12 @@ Create (Superadmin + Operator). Update (Superadmin + Supervisi). Delete (Superad
 flowchart TB
     E1("7.1 - Require role for the action")
     E2("7.2 - Mitra must be active and cover the destination Wilayah")
-    E3("7.3 - Qty above 0, canonical unit, departure date not before today")
+    E3("7.3 - Every product line: qty above 0, canonical unit, distance given for per-kilometer tariffs, departure date not before today")
     E4{"same order submitted within 1 minute?"}
     E5("7.4 - Return the existing order (no duplicate)")
-    E6("7.5 - Generate OrderNo, ETA = departure + 7 days, snapshot mitra name, tariff, and cost")
+    E6("7.5 - Generate OrderNo, ETA = departure + 7 days, snapshot mitra name plus per-product tariff and cost")
     E7("7.6 - Commit order as Committed")
-    E8("7.7 - Write Rencana Kedatangan (Next Supply + ETA) on destination Gudang Wilayah, max 3 slots")
+    E8("7.7 - Write Rencana Kedatangan (Next Supply + ETA) per product line on destination Gudang Wilayah, max 3 slots each")
     E9{"arrival-plan write failed?"}
     E10("7.8 - Mark StockImpacted")
     E11("7.8 - Mark FlagTertunda (dampak stok tertunda), retry later via resync")
@@ -119,10 +124,24 @@ flowchart TB
     F1("8.1 - Load order (preview shows Mitra, destination, material, qty + unit, departure, ETA, order no, timestamp)")
     F2("8.2 - Render PDF deterministically (no random content, no fresh timestamps inside)")
     F3("8.3 - Stamp InvoiceGeneratedAt once, never rewrite")
-    F4("8.4 - Return PDF bytes; regenerating the same order returns identical bytes")
+    F4("8.4 - API streams the PDF as an HTTP file response; the frontend saves it as a download - regenerating returns identical bytes")
 
     F1 --> F2 --> F3 --> F4
 ```
 
 Preview never mutates data; only Submit (process 7.0) commits. If PDF rendering
 fails, the committed order is untouched and the user simply retries.
+
+## 9.0 — Manajemen Mitra (Superadmin only)
+
+```mermaid
+flowchart TB
+    G1("9.1 - Require Superadmin")
+    G2("9.2 - Validate: known wilayah in area coverage, capacity and tariff above 0, tariff unit valid for the product, routes and coverage non-empty")
+    G3("9.3 - Upsert per-product tariff rows (one row per product)")
+    G4("9.4 - Append audit row")
+
+    G1 --> G2 --> G3 --> G4
+```
+
+Tariff changes never rewrite past orders — those keep their own snapshots.

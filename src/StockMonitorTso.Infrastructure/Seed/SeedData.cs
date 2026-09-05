@@ -54,12 +54,10 @@ public static class SeedData
             return;
         }
 
-        var excelPath = configuration["Seed:ExcelPath"] ?? ResolveExcelPath();
-        if (File.Exists(excelPath))
+        var lpgJsonPath = configuration["Seed:LpgJsonPath"] ?? ResolveSeedFilePath("lpg-stok.json");
+        if (File.Exists(lpgJsonPath))
         {
-            var rows = ExcelStockSeeder.LoadLpgGudangWilayah(excelPath)
-                .Concat(ExcelStockSeeder.LoadLpgOutlet(excelPath));
-            foreach (var row in rows)
+            foreach (var row in LpgStokSeeder.Load(lpgJsonPath))
             {
                 db.StokEntitas.Add(new StokEntitas
                 {
@@ -79,7 +77,7 @@ public static class SeedData
             }
         }
 
-        foreach (var row in ExcelStockSeeder.LoadMinyakTanahSample())
+        foreach (var row in StockSeedRows.LoadMinyakTanahSample())
         {
             db.StokEntitas.Add(new StokEntitas
             {
@@ -347,19 +345,20 @@ public static class SeedData
     }
 
     /// <summary>Cari `Monitoring Tabung RPM(1).xlsx` dari content root ke atas hingga repo root.</summary>
-    private static string ResolveExcelPath()
+    /// <summary>Cari file seed di folder `seeds/` dari content root ke atas hingga repo root.</summary>
+    private static string ResolveSeedFilePath(string fileName)
     {
         var dir = new DirectoryInfo(AppContext.BaseDirectory);
         for (var i = 0; i < 6 && dir is not null; i++, dir = dir.Parent)
         {
-            var candidate = Path.Combine(dir.FullName, "Monitoring Tabung RPM(1).xlsx");
+            var candidate = Path.Combine(dir.FullName, "seeds", fileName);
             if (File.Exists(candidate))
             {
                 return candidate;
             }
         }
 
-        return "Monitoring Tabung RPM(1).xlsx";
+        return Path.Combine("seeds", fileName);
     }
 
     private static async Task SeedUserAsync(

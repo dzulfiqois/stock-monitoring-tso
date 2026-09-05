@@ -1,11 +1,100 @@
 # Checklist Fase Pengembangan — Stock Monitor dan TSO
 
-> Checklist ringkas per fase (`PLAN.md §4`). Dibaca bersama `PLAN.md`, `SESSION_HANDOFF.md`,
-> `STOCK_MONITORING_SPEC.md`, `TRANSPORT_SHIPPING_ORDER_SPEC.md`.
-> Status per 2026-09: **Phase 0–4 hijau**, Phase 5 belum.
-> Verifikasi: `dotnet build -warnaserror` (0 error) · `dotnet test` 98/98 lulus tanpa 5 prasejarah (32 unit) · `dotnet format --verify` bersih · smoke `/health` 200 + DB seed (Agen 18, Outlet 36, Mitra 3).
+> Checklist ringkas per fase. Dibaca bersama `PLAN.md` (roadmap & guardrails) dan
+> `AGENTS.md` (runbook & traps).
+> Status per 2026-09: **Phase 0–4 hijau** (era Blazor) · **Phase 5 digabung ke R5** ·
+> **Phase R (Rekonstruksi Arsitektur) berikutnya**.
+> Verifikasi lama: `dotnet build -warnaserror` (0 error) · `dotnet test` **106/106 hijau** · `dotnet format --verify` bersih · smoke `/health` 200 + DB seed (Agen 18, Outlet 36, Stok 272).
+> Verifikasi baru (post-rekonstruksi): ditambah `npm run build/lint/test` (frontend) · smoke compose 4 kontainer via `curl -f http://localhost/health`.
 >
-> Catatan: **5 test prasejarah (`StockDashboardTests` ×4, `AgenDashboardTests.GetSalesAreaCards_Papua_…` ×1)** gagal karena `Monitoring Tabung RPM(1).xlsx` di-gitignore di branch `apps` (tetap ada di `main`). Sama dengan tanpa slice ini.
+> Catatan: **5 test prasejarah sudah tidak ada** — workbook dikonversi ke `seeds/lpg-stok.json` (2026-09), xlsx machinery dihapus, seed LPG kini tracked JSON.
+
+---
+
+## Phase R — Rekonstruksi Arsitektur (R0–R5)
+
+**Deskripsi:** Migrasi dari single-host Blazor Server + SQLite ke
+`browser → nginx → { frontend TanStack Start SSR, backend .NET 8 JWT } → PostgreSQL`,
+satu kontainer per service, monorepo.
+
+**Keputusan terkunci (2026-09):**
+- [x] Frontend: **TanStack Start (SSR, Node)** + TypeScript + Tailwind (token `sm-*` diport)
+- [x] Auth: **JWT bearer** (Identity Core tetap user store); idle 15 menit via access-token + refresh aktivitas; switch-role = token terbit ulang
+- [x] Migrasi: **backend-first bertahap R0–R5**; Blazor hidup selama transisi, dihapus di R5
+- [x] Deploy: **satu kontainer per service** (nginx + frontend + api + postgres), docker compose, **monorepo**
+- [x] Database: **PostgreSQL** (Npgsql), migrasi regenerasi penuh
+- [x] Branch: `main` = main repository (dokumentasi lengkap + kode) · `apps` = production update point (app + deploy saja)
+
+**Checklist fase:**
+
+### R0 — Groundwork ✅ selesai 2026-09
+- [x] Provider EF SQLite → Npgsql (`Npgsql.EntityFrameworkCore.PostgreSQL` 8.0.11); semua migrasi lama dihapus, **satu migrasi baru `InitialNpgsql`** (17 tabel, partial index quoting Postgres)
+- [x] Concurrency: `RowVersion byte[]` **dipertahankan** sebagai token (`bytea`) — semantik sama dengan SQLite, nol perubahan service; `xmin` tidak diperlukan
+- [x] DateTime: `AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true)` di kedua host; kolom audit UTC (`CreatedAt`/`UpdatedAt`/`InvoiceGeneratedAt`) → `timestamp with time zone`; tanggal bisnis tetap `timestamp`
+- [x] Endpoint auth JWT: `POST /api/auth/login|refresh|logout`, `GET /api/auth/me`, `POST /api/auth/switch-role` + `TokenService` (access 15 menit + refresh 7 hari, audience terpisah, `typ=refresh`)
+- [x] Host API murni: `StockMonitorTso.Api` jadi `Sdk.Web` executable (Program.cs + guard `EF.IsDesignTime`, DI lengkap, seed startup); Web (Blazor) tetap hidup di atas Postgres selama transisi
+- [x] Compose: `docker-compose.yml` baru (postgres + api + nginx — satu kontainer per service, volume `pgdata`, healthcheck); legacy dipindah ke `docker-compose.legacy.yml`; `deploy/nginx/nginx.conf` + `deploy/postgres/init/01-init.sql` + `src/StockMonitorTso.Api/Dockerfile` (non-root 1654)
+- [x] `DataProtection:KeyPath` configurable (default `/app/keys` untuk kontainer; test override ke temp dir)
+- [x] **R0.1 — `APP_BASE_URL` + forwarded headers**: `App:BaseUrl` (env `APP_BASE_URL`) pin scheme/host via `PublicBaseUrlMiddleware` (kedua host); `UseForwardedHeaders` paling awal (`X-Forwarded-For|Proto`, KnownNetworks/Proxies cleared); cookie `Secure=Always` bila BaseUrl https; endpoint diagnostik `/api/debug/request` (dev-only, 404 di Production)
+- [x] Test integration: Postgres **compose** (`docker compose up -d postgres` wajib jalan) — database terpisah `sm_test_{guid}` per factory via `TestDatabase` helper; 8 test baru `AuthApiTests` + 3 test baru `PublicBaseUrlTests` (login/me/switch-role/refresh/401/scheme pinning/forwarded headers). *Catatan: Testcontainers digantikan compose-Postgres — container-start dari dalam testhost menggantung di environment ini (bukti: probe standalone 4.3s OK, testhost mang).*
+- [x] Seed LPG: workbook → **`seeds/lpg-stok.json`** (42 baris, konversi via parser asli — byte-faithful); `LpgStokSeeder` + `Seed:LpgJsonPath`; xlsx machinery (`ExcelStockSeeder` parsing, `XlsxReader`) dihapus; **5 test prasejarah kembali hijau** → suite 106/106
+- [x] Fix bonus: **merge-conflict markers tertinggal** di `LoginLegacy.razor` + `LoginLayout.razor` (sejak merge apps — solusi tidak pernah build); **race DbContext** di `ActiveRoleSwitcher` (query layout vs halaman pada satu connection — SQLite menyembunyikannya, Npgsql membongkarnya) → isolasi child-scope
+- Gerbang: ✅ api boot di Postgres via compose; ✅ login → me → switch-role round-trip via curl **melalui nginx**; ✅ `dotnet test` 101 total — 96 hijau, 5 prasejarah xlsx (terdokumentasi); ✅ build 0/0; ✅ format verify bersih
+
+### R1 — REST surface lengkap ✅ selesai 2026-09
+- [x] `/api/dashboard` — summary, ringkasan, lpg-rows, minyak-rows, cards(+filter), sales-area/{wilayah}/{produk}, sales-area-lpg/{wilayah}, agen-inventaris, agen/{id}, agen-transfer-targets, outlet-inventaris, outlet/{id}, outlet-transfer-targets (semua read: semua role)
+- [x] `/api/stock` — POST register (SA+Op), PUT {id} detail (SA+Sup), POST {id}/transact Receive/Issue/Adjust±/Transfer (SA+Sup, overdraft 400), DELETE {id} (SA)
+- [x] `/api/agen` — GET by wilayah + {id}, POST/PUT/DELETE, POST {id}/transfer-from-warehouse (konservasi via API terverifikasi)
+- [x] `/api/outlet` — GET by agen + {id}, POST/PUT/DELETE, POST transfer-from-agen (mismatch agen → 400)
+- [x] `/api/users` — **Superadmin-only di endpoint** (`RequireRole("Superadmin")`, karena service list tidak enforce): list(+roles), create, assign/remove role, set password (old password mati terverifikasi)
+- [x] `ProblemMapper` — exception service → ProblemDetails (409/403/404/400, sisanya 500); enum sebagai string global (`JsonStringEnumConverter`) untuk kontrak React
+- [x] Fix: Api host menambah `.AddDefaultTokenProviders()` (set-password butuh reset token)
+- [x] Test baru (20): DashboardApi ×6, StockApi ×5, AgenApi ×5, OutletApi ×4, UsersApi ×5 — pola bearer via `TestHttp`
+- Gerbang: ✅ build 0/0 · ✅ `dotnet test` **134/134 hijau** (32 unit + 102 integration) · ✅ format bersih · ✅ smoke live via nginx (summary 200, tamu 403 di stock/users)
+
+### R2 — React shell ✅ selesai 2026-09
+- [x] `frontend/` scaffold **TanStack Start** (nitro 3 + vite 8 + tsr CLI, React 19, Tailwind v4) — discaffold via `npm create @tanstack/start`, lalu disesuaikan
+- [x] Token `sm-*` Material-3 di-port ke Tailwind v4 `@theme` (kelas komponen `sm-card/sm-btn/sm-input/sm-pill/sm-alert`); catatan: Tailwind v4 **tidak bisa `@apply` kelas komponen sendiri** — utility di-expand
+- [x] Halaman `/login` (email+password → pilih role aktif bila multi-role via `/api/auth/switch-role`) dan `/` dashboard Ringkasan Operasional (KPI Sektor Gas/Minyak + bar chart Agen vs Outlet + role switcher + logout)
+- [x] Auth interceptor `apiFetch`: Bearer header; **401 → refresh sekali → ulangi** → gagal: clear session + redirect `/login`; 403 → ApiError (notice); token di localStorage (keputusan refresh-token storage tetap open question di PLAN)
+- [x] TanStack Query untuk data dashboard; `beforeLoad` auth-gate di route `/`
+- [x] Gates frontend: `npm run build` ✅ · `npm run lint` (eslint flat) ✅ · `npm test` (vitest, 5 unit pure-function) ✅
+- [x] Deploy: `frontend/Dockerfile` (node 22 build → runtime `.output/server/index.mjs`, non-root) · compose service `frontend` (:3000) · nginx `location /` → frontend (WS upgrade headers untuk SSR), `/api`+`/health` → api
+- Gerbang: ✅ perjalanan auth end-to-end lewat nginx di compose (SSR `/login` render, login → Bearer → `/api/dashboard/summary` 200 via nginx) · ✅ backend regression 134/134 tetap hijau
+
+### R3 — Halaman Monitoring ✅ selesai 2026-09
+- [x] **Shell** `_app.tsx` (pathless layout): sidebar 288px (logo Pertamina + nav dengan Material Symbols + role switcher reload-style + logout) + topbar (user pill) + `Outlet`; `beforeLoad` + `useIsClient` gate (direct URL load anonim → `/login`)
+- [x] Dashboard `/` sesuai Blazor `Dashboard.razor`: Live Sync pill, CTA Buka Gudang Wilayah, KPI Sektor (Gas/Minyak + outlet defisit + status pill), 2 bar chart `sm-chart` (Agen=current merah-bila-kritis / Outlet=target) + legend, tabel Metrik Minyak Tanah (status = worst dari Agen/Outlet)
+- [x] `/gudang-wilayah` — filter obyek, 3 KPI (Total Stok / Produk Kritis / Exhaust Terdekat), kartu sales area (Minyak: 3 kolom Gudang/Agen/Outlet + Terjual/Intransit; LPG: 3 chip ukuran + total Tabung), tombol Agen(n), Detail, Hapus (SA, modal konfirmasi → loop soft-delete entityIds)
+- [x] `/sales-area/$wilayah/$produk` — breadcrumb, 4 KPI (LPG: Total/DOT/CD/Status; Minyak: Total/Terjual/Intransit/Status), tabel per Tier (CD N/A), Log Transaksi, **modal Update Data Harian** (segmented Isi Ulang [Receive] / Harian [Issue+auto Terjual, Adjust opname ±, UpdateDetail intransit/keterangan] per-ukuran LPG / tunggal Minyak), **modal Kirim ke Agen** (stok gudang live per SKU + target dropdown + qty>0)
+- [x] `/sales-area/register` — branching Minyak (2 baris: Gudang+Outlet) / LPG (6 baris: 3 SKU × 2 tier), invalidasi cards+summary
+- [x] `/wilayah/$wilayah/agen` — tabel agen + Tambah/Edit modal + Hapus modal (RBAC: CU=SA+Sup, D=SA)
+- [x] `/agen/$agenId` — KPI + tabel per produk + log + Update Harian (per-produk entries) + Kirim ke Outlet (stok agen live per 4 SKU) + link Daftar Outlet
+- [x] `/agen/$agenId/outlet` — tabel outlet + Tambah/Edit + Hapus
+- [x] `/outlet/$outletId` — KPI + tabel per produk + log + Update Harian
+- [x] Komponen bersama: `RoleGate` (mirror `AuthorizeView`), `StatusPill`, `Modal` (ESC + backdrop), `lib/data.ts` (typed API layer: data/stock/agen/outlet)
+- [x] Styles: `app.css` Blazor di-port **verbatim** (alias `--sm-*` + seluruh kelas: shell/nav/kpi/pill/chip/table/modal/segmented/breadcrumb/frame/chart/fonts Inter+Material Symbols)
+- [x] Stub R4: `/tso`, `/mitra`, `/admin/users` (nav lengkap, halaman menyusul)
+- Gerbang: ✅ build · lint · vitest 5/5 · **tsc --noEmit bersih** · ✅ 13 route SSR 200 via nginx, 0 error frontend · backend tak tersentuh
+
+### R4 — Halaman TSO + Mitra + Admin ✅ selesai 2026-09
+- [x] `/tso` — daftar order (Order No/Mitra/Tujuan/Material/Qty/Keberangkatan/Status) + Buat TSO (SA+Op) + Preview + Update (SA+Sup) + Hapus modal (SA)
+- [x] **Wizard TSO 4 langkah** (`components/TsoWizard.tsx`, dipakai `/tso/create` + `/tso/$tsoId/edit`): (1) Tujuan & Obyek — multi-SKU LPG / minyak tunggal, stepper qty; (2) Rute & Jadwal — rute + jarak km (wajib utk tarif per_kilometer) + tanggal ≥ hari ini + ETA otomatis +7; (3) Transporter — mitra ter-filter area coverage + tarif per-jenis + estimasi biaya per baris (`tarif × qty [× jarak]`); (4) Ringkasan proposal — commit di Submit → redirect preview
+- [x] `/tso/$tsoId` — Preview read-only 8 kolom + status pill + Resync (FlagTertunda) + **Generate Draft Invoice** (POST → blob → download) + link Update (SA+Sup)
+- [x] `/mitra` (Superadmin) — tabel mitra + modal create/edit 12 field (rute comma-list, area coverage checklist DisplayName, aktif) + tarif per-jenis dengan allowlist satuan (per_kiloliter/per_tabung/per_kilometer); edit = PUT update + loop PUT tarif
+- [x] `/admin/users` (Superadmin) — daftar user + roles pill toggle (klik assign/remove) + Set Password (prompt ≥8) + modal Tambah User (email/password/konfirmasi/roles checklist/role aktif terbatas)
+- [x] `lib/tso.ts` + `lib/users.ts` — typed API layer (TransportOrder + details, MitraTso + tarifs, UserView)
+- [x] **Fix backend**: `ReferenceHandler.IgnoreCycles` di JSON options — `GET /api/tso/{id}` dan `GET /api/mitra` 500 karena siklus navigasi balik (`TransportOrderDetail.Order`, `MitraTarif.Mitra`) yang baru pertama terekspos via HTTP
+- Gerbang: ✅ build · lint · vitest · tsc bersih · ✅ backend 134/134 tetap hijau · ✅ E2E via nginx: create order (201 → StockImpacted) → GET detail + tarif rows → invoice PDF 200 (35KB, %PDF-) → 6 route R4 SSR 200
+
+### R5 — Cutover + Hardening
+- [x] **R5a — Web dipensiunkan (2026-09)**: `StockMonitorTso.Web` dihapus dari solusi + folder; **seluruh test integration dimigrasi ke host Api** (`TestApiWebApplicationFactory[WithStock]`) — service-DI suite swap mekanis (aktor ClaimsPrincipal manual host-agnostic), cookie suite diganti bearer/service (`AuthAndRbacTests`: idle-15-menit kini diuji via expiry token JWT; `AdminPageAccessTests` dihapus — paritas di `UsersApiTests` + anon-401 baru), `ActiveRoleClaimsPrincipalFactory` kini juga terdaftar di host Api (defense-in-depth klaim role aktif), legacy single-container deploy dihapus (root `Dockerfile` + `docker-compose.legacy.yml`)
+- [x] Solution kini 3 proyek: Domain · Infrastructure · Api (+ frontend/ + tests) — compose 4 kontainer tetap
+- [x] **R5b — Hardening (2026-09)**: Serilog structured (bootstrap→config-driven; JSON Compact di Production, teks di dev; request logging + RequestId) · `/ready` (cek `SELECT 1` database, tag "ready"; `/health` liveness) · template TLS nginx (`nginx-tls.conf.template` + `gen-dev-cert.sh`) · image di-slim: **api 461MB → 227MB** (base alpine + publish `-r linux-musl-x64`, folder runtimes 72MB hilang, fontconfig+font-dejavu untuk QuestPDF — PDF terverifikasi byte-identical) · healthcheck api pindah ke busybox wget (alpine tanpa bash) · DataProtection keys dir dibuat+owned di image
+- Catatan: frontend image 239MB (node:22-alpine + output nitro) — gate <200MB berlaku untuk image api; ukuran frontend mengikuti base node resmi
+- [x] **R5c — Sinkron `apps`**: merge main → apps (app + deploy artifacts; tanpa dokumentasi)
+- [x] **R5d — Dokumentasi final**
+- Gerbang tercapai (R5a): ✅ build 0/0 · ✅ **132/132 test** (32 unit + 100 integration, semua di host Api) · ✅ format bersih · ✅ compose 4 kontainer healthy + smoke via nginx
 
 ---
 
@@ -119,9 +208,9 @@
 
 ---
 
-## Phase 5 — Hardening
+## Phase 5 — Hardening (digabung ke R5)
 
-**Deskripsi:** Kualitas produksi: logging terstruktur, ProblemDetails, readiness/metrics, container non-root, CI format, opsi PostgreSQL.
+**Deskripsi:** Kualitas produksi: logging terstruktur, ProblemDetails, readiness/metrics, container non-root, CI format, opsi PostgreSQL. **2026-09: seluruh item fase ini dipindahkan ke Phase R5 (cutover + hardening) — PostgreSQL tidak lagi opsional.**
 
 **Checklist:**
 - [ ] Serilog structured JSON + correlation id + redaksi secret

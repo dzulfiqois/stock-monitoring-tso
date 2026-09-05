@@ -1,7 +1,11 @@
 # 03 — DFD Level 1 (Processes + Data Stores)
 
-Process 0 from Level 0 is decomposed into 8 processes and 7 data stores.
+Process 0 from Level 0 is decomposed into 9 processes and 7 data stores.
 `PIHAK`, `MITRA`, and `PUSAT` are the external entities from Level 0.
+
+**Execution note (2026-09 reconstruction):** all 9 processes execute inside the **api**
+container (.NET 8, JWT bearer). The React frontend (TanStack Start SSR) renders forms
+and forwards input over REST; `D1–D7` live in PostgreSQL.
 
 ## Diagram
 
@@ -20,6 +24,7 @@ flowchart TB
         P6("6.0<br/>Inventaris Agen dan Outlet")
         P7("7.0<br/>Order TSO")
         P8("8.0<br/>Draft Invoice")
+        P9("9.0<br/>Manajemen Mitra")
     end
 
     subgraph STORES["Data stores"]
@@ -73,6 +78,10 @@ flowchart TB
     P8 -->|"baca mitra"| D4
     P8 -->|"Draft Invoice PDF"| PIHAK
     P8 -->|"Draft Invoice PDF"| MITRA
+
+    PIHAK -->|"create, update, update per-product tariff (Superadmin)"| P9
+    P9 <-->|"mitra + per-product tariffs"| D4
+    P9 -->|"audit"| D7
 ```
 
 ## Process table
@@ -85,8 +94,9 @@ flowchart TB
 | 4.0 | Registrasi dan Update Data Stok — Register Sales Area (branching minyak 2 rows vs LPG 6 rows), update detail (pre-filled), soft-delete with confirm modal | Forms | Stock rows created/updated/flagged deleted, audit rows | Register: Superadmin + Operator · Update: Superadmin + Supervisi · Delete: Superadmin |
 | 5.0 | Transaksi Stok (Konservasi) — the only writer of `Stok`, always inside one DB transaction | `Receive` / `Issue` / `Adjust` / `Transfer` + qty + optional destination | Changed balances, transaction records, audit rows | Superadmin + Supervisi (Receive also via 4.0 register path: Superadmin + Operator) |
 | 6.0 | Inventaris Agen dan Outlet — named identity CRUD (auto-creates zero stock rows per product), "Kirim ke Agen" and "Kirim ke Outlet" modals (one destination + qty per SKU, one atomic `Transfer` per SKU) | Identity forms, transfer requests | Identity rows, stock rows, audit rows | Create/Update identity: Superadmin + Supervisi · Delete identity: Superadmin |
-| 7.0 | Order TSO — 4-step wizard, commit at Submit, 1-minute duplicate guard, price snapshot, arrival-plan impact | Wizard payload (destination, route, dates, mitra, product, qty) | Committed order, arrival plan on destination Gudang Wilayah, audit rows | Create: Superadmin + Operator · Update: Superadmin + Supervisi · Delete: Superadmin |
+| 7.0 | Order TSO — 4-step wizard, commit at Submit, 1-minute duplicate guard, price snapshot, arrival-plan impact | Wizard payload (destination, route, dates, mitra, product lines, optional distance) | Committed order, arrival plan on destination Gudang Wilayah, audit rows | Create: Superadmin + Operator · Update: Superadmin + Supervisi · Delete: Superadmin |
 | 8.0 | Draft Invoice — read-only preview + deterministic PDF generation | Order id | PDF bytes (byte-identical on regenerate) | Roles entitled to view the order |
+| 9.0 | Manajemen Mitra — create, update, per-product tariff update; list/get read | Admin forms | Mitra master updated, audit rows | Superadmin only |
 
 Every mutation in 2.0 and 4.0–7.0 appends to **D7 AuditLogs** (actor, active role, time,
 entity, before/after values).
@@ -98,8 +108,8 @@ entity, before/after values).
 | D1 Identity | Users, roles, user-role links, `ActiveRoleName` | Assign role and password changes are Superadmin-only, enforced in the service layer. |
 | D2 StokEntitas + RencanaKedatangan | One row per (Wilayah × Produk × Tier); Agen rows carry `AgenId`, Outlet rows carry `OutletId`; up to 3 arrival slots per row | Filtered unique indexes per row shape. Written only by 4.0, 5.0, and 7.0. |
 | D3 Agen + Outlet | Named identities (`Agen`: unique name per Wilayah, 2–3 per Gudang; `Outlet`: unique name per Agen, 2 per Agen) | Soft delete; stock rows reference them. |
-| D4 MitraTso | Transporter master: id, name, vehicle, capacity, routes, area coverage, contact, PIC, tariff | Seed-loaded at startup, read-only afterwards. |
-| D5 TransportOrder | Order header: order no, mitra + name snapshot, tariff + cost snapshot, destination, route, product, qty + unit, departure, ETA, status (`Committed` / `StockImpacted` / `FlagTertunda`), concurrency token | Soft delete; price snapshot freezes the order against later tariff changes. |
+| D4 MitraTso | Transporter master: id, name, vehicle, capacity, routes, area coverage, contact, PIC, legacy tariff + per-product tariffs | Seed-loaded at startup; thereafter maintained by Superadmin (create, update, per-product tariff). Order flow reads it and snapshots prices. |
+| D5 TransportOrder | Order header: order no, mitra + name snapshot, destination, route, departure, ETA, status (`Committed` / `StockImpacted` / `FlagTertunda`), concurrency token — plus per-product detail rows (qty, tariff/units/cost snapshots) and optional distance (km) | Soft delete; per-product snapshots freeze the order against later tariff changes. |
 | D6 StockTransactions | One row per mutation (source before/after; destination before/after for transfers) | Append-only. |
 | D7 AuditLogs | Who did what, with which active role, when, before/after | Append-only. |
 

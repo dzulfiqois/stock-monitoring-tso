@@ -1,0 +1,434 @@
+[
+  {
+    "wilayah": "PapuaBarat",
+    "produk": "Lpg5_5Kg",
+    "tier": "GudangWilayah",
+    "tanggalStokAwal": "2026-07-16",
+    "stok": 875,
+    "dot": 36,
+    "rencanaKedatangan": []
+  },
+  {
+    "wilayah": "PapuaBarat",
+    "produk": "Lpg12Kg",
+    "tier": "GudangWilayah",
+    "tanggalStokAwal": "2026-07-16",
+    "stok": 2024,
+    "dot": 158,
+    "rencanaKedatangan": []
+  },
+  {
+    "wilayah": "PapuaBarat",
+    "produk": "Lpg50Kg",
+    "tier": "GudangWilayah",
+    "tanggalStokAwal": "2026-07-16",
+    "stok": 164,
+    "dot": 6,
+    "rencanaKedatangan": []
+  },
+  {
+    "wilayah": "PapuaBaratDaya",
+    "produk": "Lpg5_5Kg",
+    "tier": "GudangWilayah",
+    "tanggalStokAwal": "2026-07-16",
+    "stok": 1803,
+    "dot": 123,
+    "rencanaKedatangan": []
+  },
+  {
+    "wilayah": "PapuaBaratDaya",
+    "produk": "Lpg12Kg",
+    "tier": "GudangWilayah",
+    "tanggalStokAwal": "2026-07-16",
+    "stok": 2631,
+    "dot": 265,
+    "rencanaKedatangan": []
+  },
+  {
+    "wilayah": "PapuaBaratDaya",
+    "produk": "Lpg50Kg",
+    "tier": "GudangWilayah",
+    "tanggalStokAwal": "2026-07-16",
+    "stok": 304,
+    "dot": 18,
+    "rencanaKedatangan": []
+  },
+  {
+    "wilayah": "Maluku",
+    "produk": "Lpg5_5Kg",
+    "tier": "GudangWilayah",
+    "tanggalStokAwal": "2026-07-16",
+    "stok": 4468,
+    "dot": 325,
+    "rencanaKedatangan": []
+  },
+  {
+    "wilayah": "Maluku",
+    "produk": "Lpg12Kg",
+    "tier": "GudangWilayah",
+    "tanggalStokAwal": "2026-07-16",
+    "stok": 6319,
+    "dot": 450,
+    "rencanaKedatangan": []
+  },
+  {
+    "wilayah": "Maluku",
+    "produk": "Lpg50Kg",
+    "tier": "GudangWilayah",
+    "tanggalStokAwal": "2026-07-16",
+    "stok": 867,
+    "dot": 50,
+    "rencanaKedatangan": []
+  },
+  {
+    "wilayah": "MalukuUtara",
+    "produk": "Lpg5_5Kg",
+    "tier": "GudangWilayah",
+    "tanggalStokAwal": "2026-07-16",
+    "stok": 3205,
+    "dot": 275,
+    "rencanaKedatangan": [
+      {
+        "urutan": 1,
+        "nextSupply": 1317,
+        "eta": "2026-07-10"
+      }
+    ]
+  },
+  {
+    "wilayah": "MalukuUtara",
+    "produk": "Lpg12Kg",
+    "tier": "GudangWilayah",
+    "tanggalStokAwal": "2026-07-16",
+    "stok": 5471,
+    "dot": 355,
+    "rencanaKedatangan": [
+      {
+        "urutan": 1,
+        "nextSupply": 6815,
+        "eta": "2026-07-10"
+      }
+    ]
+  },
+  {
+    "wilayah": "MalukuUtara",
+    "produk": "Lpg50Kg",
+    "tier": "GudangWilayah",
+    "tanggalStokAwal": "2026-07-16",
+    "stok": 280,
+    "dot": 24,
+    "rencanaKedatangan": [
+      {
+        "urutan": 1,
+        "nextSupply": 356,
+        "eta": "2026-07-10"
+      }
+    ]
+  },
+  {
+    "wilayah": "PapuaTengah",
+    "produk": "Lpg5_5Kg",
+    "tier": "GudangWilayah",
+    "tanggalStokAwal": "2026-07-16",
+    "stok": 1841,
+    "dot": 200,
+    "rencanaKedatangan": []
+  },
+  {
+    "wilayah": "PapuaTengah",
+    "produk": "Lpg12Kg",
+    "tier": "GudangWilayah",
+    "tanggalStokAwal": "2026-07-16",
+    "stok": 5654,
+    "dot": 434,
+    "rencanaKedatangan": []
+  },
+  {
+    "wilayah": "PapuaTengah",
+    "produk": "Lpg50Kg",
+    "tier": "GudangWilayah",
+    "tanggalStokAwal": "2026-07-16",
+    "stok": 284,
+    "dot": 33,
+    "rencanaKedatangan": []
+  },
+  {
+    "wilayah": "PapuaSelatanPegunungan",
+    "produk": "Lpg5_5Kg",
+    "tier": "GudangWilayah",
+    "tanggalStokAwal": "2026-07-16",
+    "stok": 950,
+    "dot": 110,
+    "rencanaKedatangan": []
+  },
+  {
+    "wilayah": "PapuaSelatanPegunungan",
+    "produk": "Lpg12Kg",
+    "tier": "GudangWilayah",
+    "tanggalStokAwal": "2026-07-16",
+    "stok": 1766,
+    "dot": 140,
+    "rencanaKedatangan": []
+  },
+  {
+    "wilayah": "PapuaSelatanPegunungan",
+    "produk": "Lpg50Kg",
+    "tier": "GudangWilayah",
+    "tanggalStokAwal": "2026-07-16",
+    "stok": 46,
+    "dot": 4,
+    "rencanaKedatangan": []
+  },
+  {
+    "wilayah": "Papua",
+    "produk": "Lpg5_5Kg",
+    "tier": "GudangWilayah",
+    "tanggalStokAwal": "2026-07-16",
+    "stok": 4641,
+    "dot": 550,
+    "rencanaKedatangan": []
+  },
+  {
+    "wilayah": "Papua",
+    "produk": "Lpg12Kg",
+    "tier": "GudangWilayah",
+    "tanggalStokAwal": "2026-07-16",
+    "stok": 8706,
+    "dot": 555,
+    "rencanaKedatangan": []
+  },
+  {
+    "wilayah": "Papua",
+    "produk": "Lpg50Kg",
+    "tier": "GudangWilayah",
+    "tanggalStokAwal": "2026-07-16",
+    "stok": 764,
+    "dot": 66,
+    "rencanaKedatangan": []
+  },
+  {
+    "wilayah": "PapuaBarat",
+    "produk": "Lpg5_5Kg",
+    "tier": "Outlet",
+    "tanggalStokAwal": "2026-07-16",
+    "stok": 1060,
+    "dot": 34,
+    "rencanaKedatangan": [
+      {
+        "urutan": 1,
+        "nextSupply": 1359,
+        "eta": "2026-06-21"
+      }
+    ]
+  },
+  {
+    "wilayah": "PapuaBarat",
+    "produk": "Lpg12Kg",
+    "tier": "Outlet",
+    "tanggalStokAwal": "2026-07-16",
+    "stok": 2379,
+    "dot": 151,
+    "rencanaKedatangan": [
+      {
+        "urutan": 1,
+        "nextSupply": 6138,
+        "eta": "2026-06-21"
+      }
+    ]
+  },
+  {
+    "wilayah": "PapuaBarat",
+    "produk": "Lpg50Kg",
+    "tier": "Outlet",
+    "tanggalStokAwal": "2026-07-16",
+    "stok": 156,
+    "dot": 6,
+    "rencanaKedatangan": [
+      {
+        "urutan": 1,
+        "nextSupply": 0,
+        "eta": "2026-06-21"
+      }
+    ]
+  },
+  {
+    "wilayah": "PapuaBaratDaya",
+    "produk": "Lpg5_5Kg",
+    "tier": "Outlet",
+    "tanggalStokAwal": "2026-07-16",
+    "stok": 2136,
+    "dot": 118,
+    "rencanaKedatangan": [
+      {
+        "urutan": 1,
+        "nextSupply": 2252,
+        "eta": "2026-06-27"
+      }
+    ]
+  },
+  {
+    "wilayah": "PapuaBaratDaya",
+    "produk": "Lpg12Kg",
+    "tier": "Outlet",
+    "tanggalStokAwal": "2026-07-16",
+    "stok": 3036,
+    "dot": 253,
+    "rencanaKedatangan": [
+      {
+        "urutan": 1,
+        "nextSupply": 3588,
+        "eta": "2026-06-27"
+      }
+    ]
+  },
+  {
+    "wilayah": "PapuaBaratDaya",
+    "produk": "Lpg50Kg",
+    "tier": "Outlet",
+    "tanggalStokAwal": "2026-07-16",
+    "stok": 286,
+    "dot": 18,
+    "rencanaKedatangan": [
+      {
+        "urutan": 1,
+        "nextSupply": 165,
+        "eta": "2026-06-27"
+      }
+    ]
+  },
+  {
+    "wilayah": "Maluku",
+    "produk": "Lpg5_5Kg",
+    "tier": "Outlet",
+    "tanggalStokAwal": "2026-07-16",
+    "stok": 2300,
+    "dot": 200,
+    "rencanaKedatangan": []
+  },
+  {
+    "wilayah": "Maluku",
+    "produk": "Lpg12Kg",
+    "tier": "Outlet",
+    "tanggalStokAwal": "2026-07-16",
+    "stok": 3720,
+    "dot": 340,
+    "rencanaKedatangan": []
+  },
+  {
+    "wilayah": "Maluku",
+    "produk": "Lpg50Kg",
+    "tier": "Outlet",
+    "tanggalStokAwal": "2026-07-16",
+    "stok": 950,
+    "dot": 45,
+    "rencanaKedatangan": []
+  },
+  {
+    "wilayah": "MalukuUtara",
+    "produk": "Lpg5_5Kg",
+    "tier": "Outlet",
+    "tanggalStokAwal": "2026-07-16",
+    "stok": 1433,
+    "dot": 137.5,
+    "rencanaKedatangan": []
+  },
+  {
+    "wilayah": "MalukuUtara",
+    "produk": "Lpg12Kg",
+    "tier": "Outlet",
+    "tanggalStokAwal": "2026-07-16",
+    "stok": 1552,
+    "dot": 177.5,
+    "rencanaKedatangan": []
+  },
+  {
+    "wilayah": "MalukuUtara",
+    "produk": "Lpg50Kg",
+    "tier": "Outlet",
+    "tanggalStokAwal": "2026-07-16",
+    "stok": 28,
+    "dot": 2,
+    "rencanaKedatangan": []
+  },
+  {
+    "wilayah": "PapuaTengah",
+    "produk": "Lpg5_5Kg",
+    "tier": "Outlet",
+    "tanggalStokAwal": "2026-07-16",
+    "stok": 564,
+    "dot": 56,
+    "rencanaKedatangan": []
+  },
+  {
+    "wilayah": "PapuaTengah",
+    "produk": "Lpg12Kg",
+    "tier": "Outlet",
+    "tanggalStokAwal": "2026-07-16",
+    "stok": 1596,
+    "dot": 102,
+    "rencanaKedatangan": []
+  },
+  {
+    "wilayah": "PapuaTengah",
+    "produk": "Lpg50Kg",
+    "tier": "Outlet",
+    "tanggalStokAwal": "2026-07-16",
+    "stok": 172,
+    "dot": 21,
+    "rencanaKedatangan": []
+  },
+  {
+    "wilayah": "PapuaSelatanPegunungan",
+    "produk": "Lpg5_5Kg",
+    "tier": "Outlet",
+    "tanggalStokAwal": "2026-07-16",
+    "stok": 946,
+    "dot": 110,
+    "rencanaKedatangan": []
+  },
+  {
+    "wilayah": "PapuaSelatanPegunungan",
+    "produk": "Lpg12Kg",
+    "tier": "Outlet",
+    "tanggalStokAwal": "2026-07-16",
+    "stok": 1369,
+    "dot": 160,
+    "rencanaKedatangan": []
+  },
+  {
+    "wilayah": "PapuaSelatanPegunungan",
+    "produk": "Lpg50Kg",
+    "tier": "Outlet",
+    "tanggalStokAwal": "2026-07-16",
+    "stok": 47,
+    "dot": 4,
+    "rencanaKedatangan": []
+  },
+  {
+    "wilayah": "Papua",
+    "produk": "Lpg5_5Kg",
+    "tier": "Outlet",
+    "tanggalStokAwal": "2026-07-16",
+    "stok": 1040,
+    "dot": 115,
+    "rencanaKedatangan": []
+  },
+  {
+    "wilayah": "Papua",
+    "produk": "Lpg12Kg",
+    "tier": "Outlet",
+    "tanggalStokAwal": "2026-07-16",
+    "stok": 1704,
+    "dot": 111,
+    "rencanaKedatangan": []
+  },
+  {
+    "wilayah": "Papua",
+    "produk": "Lpg50Kg",
+    "tier": "Outlet",
+    "tanggalStokAwal": "2026-07-16",
+    "stok": 134,
+    "dot": 13.2,
+    "rencanaKedatangan": []
+  }
+]

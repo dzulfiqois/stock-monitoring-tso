@@ -1,60 +1,55 @@
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.Extensions.Configuration;
+using StockMonitorTso.Api;
 
 namespace StockMonitorTso.IntegrationTests;
 
-public class TestWebApplicationFactory : WebApplicationFactory<Program>
+/// <summary>Host API murni (JWT bearer) — skip seed stok (test yang butuh data seed pakai WithStock).</summary>
+public class TestApiWebApplicationFactory : WebApplicationFactory<Api.Program>
 {
-    private readonly string _dbPath = Path.Combine(
-        Path.GetTempPath(),
-        $"stockmonitor_test_{Guid.NewGuid():N}.db");
+    private string? _connectionString;
+    private readonly string _keyPath = Path.Combine(Path.GetTempPath(), $"sm_keys_{Guid.NewGuid():N}");
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
-        builder.UseSetting("ConnectionStrings:DefaultConnection", $"DataSource={_dbPath};Cache=Shared");
+        _connectionString = TestDatabase.CreateDatabaseAsync().GetAwaiter().GetResult();
+        builder.UseSetting("ConnectionStrings:DefaultConnection", _connectionString);
+        builder.UseSetting("DataProtection:KeyPath", _keyPath);
         builder.UseSetting("Seed:SuperadminEmail", "superadmin@stockmonitor.local");
         builder.UseSetting("Seed:OperatorEmail", "operator@stockmonitor.local");
         builder.UseSetting("Seed:SupervisiEmail", "supervisi@stockmonitor.local");
         builder.UseSetting("Seed:TamuEmail", "tamu@stockmonitor.local");
         builder.UseSetting("Seed:MultiRoleEmail", "multi@stockmonitor.local");
-        builder.UseSetting("Seed:SkipStock", "false");
+        builder.UseSetting("Seed:SkipStock", "true");
+        builder.UseSetting("Jwt:Key", "test-only-signing-key-stockmonitor-local-0123456789abcdef");
     }
 
     protected override void Dispose(bool disposing)
     {
         base.Dispose(disposing);
-        if (disposing)
+        if (disposing && _connectionString is not null)
         {
-            try
-            {
-                if (File.Exists(_dbPath))
-                {
-                    File.Delete(_dbPath);
-                }
-                if (File.Exists(_dbPath + "-wal"))
-                {
-                    File.Delete(_dbPath + "-wal");
-                }
-                if (File.Exists(_dbPath + "-shm"))
-                {
-                    File.Delete(_dbPath + "-shm");
-                }
-            }
-            catch (IOException)
-            {
-                // ignore: file still locked by OS
-            }
+            TestDatabase.DropDatabaseAsync(_connectionString).GetAwaiter().GetResult();
         }
     }
 }
 
-/// <summary>Fixture untuk test yang meregister stok sendiri — seed stok dinonaktifkan agar tidak bentrok.</summary>
-public sealed class TestWebApplicationFactoryNoStock : TestWebApplicationFactory
+/// <summary>Api host dengan seed stok penuh (untuk test dashboard yang butuh data seed).</summary>
+public sealed class TestApiWebApplicationFactoryWithStock : TestApiWebApplicationFactory
 {
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         base.ConfigureWebHost(builder);
-        builder.UseSetting("Seed:SkipStock", "true");
+        builder.UseSetting("Seed:SkipStock", "false");
+    }
+}
+
+/// <summary>Api host dengan APP_BASE_URL dipin — untuk test middleware PublicBaseUrl.</summary>
+public sealed class TestApiWebApplicationFactoryWithBaseUrl : TestApiWebApplicationFactory
+{
+    protected override void ConfigureWebHost(IWebHostBuilder builder)
+    {
+        base.ConfigureWebHost(builder);
+        builder.UseSetting("App:BaseUrl", "https://public.example:8443");
     }
 }

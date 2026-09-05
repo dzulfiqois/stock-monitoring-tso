@@ -1,11 +1,11 @@
 # Checklist & Definition of Done — Stock Monitor dan TSO
 
 > Checklist operasional per titik + kriteria Definition of Done (DoD). Dibaca bersama
-> `PLAN.md §4–§6`, `STOCK_MONITORING_SPEC.md`, `TRANSPORT_SHIPPING_ORDER_SPEC.md`,
-> `docs/PHASE_CHECKLIST.md`, `docs/SESSION_HANDOFF.md`, `docs/CHANGE_PROCESS_NOTE.md`.
+> `PLAN.md` (roadmap R0–R5 & guardrails), `AGENTS.md` (runbook & traps),
+> `docs/PHASE_CHECKLIST.md`, `docs/SESSION_HANDOFF.md`.
 >
 > Cara pakai: centang `[x]` bila titik/DoD terpenuhi; rujuk kolom **Bukti/Verifikasi**.
-> Status diperbarui per 2026-09.
+> Status diperbarui per 2026-09 (rekonstruksi arsitektur).
 
 ---
 
@@ -18,9 +18,11 @@
 | Phase 2 Monitoring (read+compute)                           |   ✅   | Selesai & hijau                                                   |
 | Phase 3 CRUD + Konservasi (+ lanjutan Agen/Outlet/Transfer/Rev UI) |   ✅   | Selesai & hijau —**CRUD belum final menunggu stakeholder** |
 | Phase 4 Modul TSO (wizard + snapshot + /api/tso + Docker)   |   ✅   | Selesai & hijau — wizard 4 langkah, snapshot tarif, PDF idempoten |
-| Phase 5 Hardening                                           |   ⏭   | Belum                                                             |
+| Phase 5 Hardening                                           |  ♻️   | Digabung ke **R5** (cutover + hardening) — PostgreSQL tidak lagi opsional |
+| **Phase R Rekonstruksi** (nginx + TanStack Start SSR + JWT API + PostgreSQL, 4 kontainer, monorepo) |   ⏭   | **Berikutnya** — keputusan terkunci, docs target selesai, kode belum berubah (`PLAN.md §4`) |
 
-**Gerbang global terakhir (2026-09):** `dotnet build -warnaserror` 0 error · `dotnet test` 98/98 lulus tanpa 5 prasejarah (xlsx tidak di `apps` branch — sama tanpa slice); 7 baru untuk `CreateUser`; `dotnet format --verify` bersih · smoke `/health` 200 + `/admin/users` 302 (redirect login untuk anonim).
+**Gerbang global terakhir (2026-09):** `dotnet build -warnaserror` 0 error · `dotnet test` 98/98 lulus tanpa 5 prasejarah (workbook tidak ada di repo — sama tanpa slice); 7 baru untuk `CreateUser`; `dotnet format --verify` bersih · smoke `/health` 200 + `/admin/users` 302 (redirect login untuk anonim).
+**Gerbang baru (post-rekonstruksi, mulai R2):** ditambah `npm run build/lint/test` (frontend) · smoke compose 4 kontainer `curl -f http://localhost/health`.
 
 ---
 
@@ -35,7 +37,7 @@ Setiap slice/task dinyatakan selesai bila semua kriteria berikut centang:
 | D3  | Integration test untuk interaksi eksternal baru                  | `tests/StockMonitorTso.IntegrationTests` — `dotnet test`     | ✅     |
 | D4  | Audit log ada untuk tiap mutasi                                  | `AuditLogService` · tabel `AuditLogs` · inspeksi test       | ✅     |
 | D5  | Tidak ada`// TODO` baru; cross-check dengan SPEC terkait       | `grep -r TODO --include="*.cs"` kosong · review spec           | ✅     |
-| D6  | Jika mengubah data/dashboard: update SPEC bila perlu             | `STOCK_MONITORING_SPEC.md` §2–§4 amend                       | ✅     |
+| D6  | Jika mengubah data/dashboard: update dokumen arsitektur bila perlu | `PLAN.md` · `architecture/` · `arsitektur/` sinkron    | ✅     |
 | G1  | Single source of truth stok — mutasi hanya via transaksi atomic | `StockWriteService.TransactAsync` · `StockTransactionRecord` | ✅     |
 | G2  | Satuan kanonik anti-campur (Tabung vs Kiloliter)                 | Validasi`Produk.Satuan()` · menolak satuan silang              | ✅     |
 | G3  | Stok non-negatif — overdraft ditolak (G3/F4)                    | `StockWriteService:EnsureSufficientStock` · test overdraft     | ✅     |
@@ -223,7 +225,7 @@ Setiap slice/task dinyatakan selesai bila semua kriteria berikut centang:
 | Rename solution`StockMonitorTso.*`                                  | ⏳ belum                                           | `PLAN.md §9`                                                                       |
 | Excel acuan: pakai baru vs cabut (perombakan domain)                  | ⏳ belum aktif                                     | `PLAN.md §9`                                                                       |
 | Tracker stok Gudang Pusat untuk TSO overdraft                         | ⏳ default:**tidak** (hanya `Kuantitas>0`) | `PLAN.md §9`                                                                       |
-| Admin CRUD Mitra TSO di app vs seed-only                              | ⏳ default Phase 4: seed-only                      | `PLAN.md §9`                                                                       |
+| Admin CRUD Mitra TSO di app vs seed-only                              | ✅ **sudah ada** (MitraService + `/api/mitra` + `/mitra`, Superadmin-only, per-produk tarif) | kode ter-merge 2026-09                                                             |
 | Export/import seed Excel dari app                                     | ⏳ default:**tidak**                         | `PLAN.md §9`                                                                       |
 | Proses ubah langkah bisnis CRUD setelah stakeholder                   | 📌                                                 | `docs/CHANGE_PROCESS_NOTE.md` — SOP 7 langkah (spec→kode→test→verifikasi→docs) |
 
@@ -232,8 +234,12 @@ Setiap slice/task dinyatakan selesai bila semua kriteria berikut centang:
 ## Perintah Verifikasi
 
 ```bash
-dotnet build StockMonitorTso.sln -warnaserror          # D1
-dotnet test StockMonitorTso.sln                         # D2, D3
-dotnet format StockMonitorTso.sln --verify-no-changes   # F
-dotnet run --project src/StockMonitorTso.Web            # http://localhost:5110 → /health 200
+dotnet build StockMonitorTso.sln -warnaserror            # D1
+dotnet test StockMonitorTso.sln                          # D2, D3
+dotnet format StockMonitorTso.sln --verify-no-changes    # F
+# era transisi (Blazor masih ada):
+dotnet run --project src/StockMonitorTso.Web             # http://localhost:5110 → /health 200
+# post-rekonstruksi (mulai R2):
+cd frontend && npm run build && npm run lint && npm test # gerbang frontend
+docker compose up -d && curl -f http://localhost/health  # smoke 4 kontainer via nginx
 ```

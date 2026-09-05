@@ -3,11 +3,11 @@ using FluentAssertions;
 
 namespace StockMonitorTso.IntegrationTests;
 
-public class HealthCheckTests : IClassFixture<TestWebApplicationFactory>
+public class HealthCheckTests : IClassFixture<TestApiWebApplicationFactory>
 {
-    private readonly TestWebApplicationFactory _factory;
+    private readonly TestApiWebApplicationFactory _factory;
 
-    public HealthCheckTests(TestWebApplicationFactory factory)
+    public HealthCheckTests(TestApiWebApplicationFactory factory)
     {
         _factory = factory;
     }

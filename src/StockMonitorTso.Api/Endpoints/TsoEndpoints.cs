@@ -88,7 +88,7 @@ public static class TsoEndpoints
             try
             {
                 await service.ResyncStockImpactAsync(id);
-                return Results.Ok();
+                return Results.NoContent();
             }
             catch (KeyNotFoundException ex) { return Results.Problem(detail: ex.Message, statusCode: 404); }
             catch (InvalidOperationException ex) { return Results.Problem(detail: ex.Message, statusCode: 400); }

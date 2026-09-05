@@ -11,11 +11,11 @@ namespace StockMonitorTso.IntegrationTests;
 
 public class UserAdminCreateTests : IDisposable
 {
-    private readonly TestWebApplicationFactory _factory;
+    private readonly TestApiWebApplicationFactoryWithStock _factory;
 
     public UserAdminCreateTests()
     {
-        _factory = new TestWebApplicationFactory();
+        _factory = new TestApiWebApplicationFactoryWithStock();
     }
 
     public void Dispose()

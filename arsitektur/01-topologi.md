@@ -1,115 +1,120 @@
 # 01 — Topologi Sistem & Deployment
 
-Aplikasi: **Stock Monitor dan TSO** — satu aplikasi web dengan dua modul yang berbagi
-satu shell (login + dashboard): **Monitoring Stok** (minyak tanah + LPG) dan
-**Transport Shipping Order (TSO)**.
+Aplikasi: **Stock Monitor dan TSO** — dua modul yang berbagi satu shell (login +
+dashboard): **Monitoring Stok** (minyak tanah + LPG) dan **Transport Shipping Order
+(TSO)**.
 
-## 1. Topologi runtime
+> Rekonstruksi 2026-09: satu kontainer per service, monorepo. Aplikasi single-host
+> Blazor Server diganti frontend React (TanStack Start, SSR) plus REST API murni
+> .NET 8, di atas PostgreSQL, di depan nginx.
+
+## 1. Topologi runtime (produksi — docker compose)
 
 ```mermaid
 flowchart LR
-    subgraph BROWSERS["Peramban (HTTPS)"]
-        SA["Superadmin"]
-        OP["Operator"]
-        SV["Supervisi"]
-        TM["Tamu"]
+    BROWSER["Peramban<br/>(Superadmin / Operator / Supervisi / Tamu)"]
+
+    subgraph COMPOSE["docker compose — satu kontainer per service"]
+        NGINX["nginx<br/>reverse proxy + TLS (80/443)"]
+        FRONT["frontend<br/>TanStack Start SSR (Node)<br/>render halaman, memanggil /api"]
+        API["api<br/>.NET 8 REST, JWT bearer<br/>seluruh logika bisnis + audit"]
+        PG[("postgres<br/>PostgreSQL")]
+        NGINX -->|"path /"| FRONT
+        NGINX -->|"path /api dan /health"| API
+        API -->|"Npgsql, EF Core"| PG
     end
 
-    subgraph HOST["Satu host ASP.NET Core 8 (Kestrel)"]
-        UI["Blazor Server - halaman dan modal interaktif"]
-        API["Minimal API - /api/tso"]
-        AUTH["Autentikasi kuki Identity - idle geser 15 menit - role aktif yang bisa diganti"]
-        PDF["QuestPDF - Draft Invoice dirender di dalam proses"]
-        HC["/health"]
-    end
-
-    subgraph DATA["SQLite via EF Core"]
-        DB[("stockmonitor.db")]
-    end
-
-    subgraph BOOT["Rantai startup (setiap boot)"]
-        direction TB
-        M["Auto-migrate database"] --> S1["Seed role + 5 akun"]
-        S1 --> S2["Seed baris stok LPG dari workbook"]
-        S2 --> S3["Seed baris contoh minyak tanah"]
-        S3 --> S4["Mock: bagi 50 persen stok Gudang ke Agen, 50 persen stok Agen ke Outlet"]
-        S4 --> S5["Seed 3 Mitra TSO dari master JSON"]
-    end
-
-    subgraph DOCKER["Kemasan kontainer"]
-        direction TB
-        IMG["Image multi-stage: build SDK, runtime ASP.NET, user non-root 1654"]
-        PORTS["Host 80 ke kontainer 8080, host 443 ke kontainer 8081 (sertifikat self-signed)"]
-        VOLS["Volume: stockmonitor_data (database), stockmonitor_keys (kunci autentikasi)"]
-    end
-
-    BROWSERS --> HOST
-    HOST <--> DATA
-    BOOT -. "berjalan di dalam host saat startup" .-> DATA
+    BROWSER -->|"HTTPS"| NGINX
 ```
+
+Rantai startup (di dalam kontainer **api**, setiap boot): auto-migrate PostgreSQL →
+seed role + 5 akun → seed baris stok (mock atau skip via flag; workbook opsional dan
+tidak ada di repo) → mock split: 50% stok Gudang ke Agen, 50% stok Agen ke Outlet
+(diaudit sebagai `Transfer`) → upsert 3 Mitra TSO dari master JSON.
+
+Volume & kemasan:
+
+| Kontainer | Sumber image | Catatan |
+|---|---|---|
+| nginx | image standar + `deploy/nginx/nginx.conf` | Terminasi TLS, routing SPA/SSR, proxy `/api`, proxy `/health` |
+| frontend | `frontend/Dockerfile` (node build → node runtime, non-root) | Server SSR TanStack Start; melayani halaman dan aset statis |
+| api | `src/StockMonitorTso.Api/Dockerfile` (multi-stage sdk→aspnet, non-root) | Endpoint REST, JWT, QuestPDF di dalam proses, auto-migrate + seed |
+| postgres | image standar + `deploy/postgres/init/` | Data di volume `pgdata`; healthcheck sebelum api |
 
 Catatan:
 
-- Satu Generic Host melayani UI Blazor Server sekaligus Minimal API. Tidak ada layanan
-  API terpisah maupun message bus.
-- Status autentikasi berupa kuki. Satu-satunya klaim role yang diterbitkan adalah
-  **role aktif**; pengguna dengan beberapa role memilih satu role aktif saat login dan
-  boleh menggantinya di tengah sesi. Hak akses selalu mengikuti role aktif, bukan
-  gabungan seluruh role.
-- Generator PDF berjalan di dalam proses; render invoice tidak pernah keluar host.
-- Volume kunci khusus dipasang bersama volume data agar kunci autentikasi bisa bertahan
-  melewati restart kontainer.
-- Tidak ada layanan eksternal yang dipanggil saat runtime. Workbook dan file JSON Mitra
-  hanya dibaca **saat seeding startup**; tidak dipantau atau dibaca ulang setelahnya.
+- Autentikasi **stateless**: api menerbitkan token JWT bearer (access 15 menit +
+  refresh). Volume kunci sisi server tidak lagi diperlukan untuk sesi.
+- nginx tidak pernah menjalankan logika aplikasi; ia hanya routing dan terminasi TLS.
+- Tidak ada layanan eksternal lain yang dipanggil saat runtime; master JSON Mitra hanya
+  dibaca saat seeding, dan layar Mitra Superadmin mengelolanya setelahnya.
 
-## 2. Pelapisan kode
+## 2. Alur autentikasi (JWT bearer)
+
+1. `POST /api/auth/login` — email + password (+ role aktif untuk pengguna multi-role)
+   → access token (kedaluwarsa 15 menit, klaim role aktif) + refresh token.
+2. Setiap panggilan api membawa `Authorization: Bearer <access token>`.
+3. `POST /api/auth/refresh` saat ada aktivitas — access token baru; jendela idle
+   15 menit bergeser; setelah hangus, pengguna login lagi.
+4. `POST /api/auth/switch-role` — keanggotaan divalidasi sisi server, token
+   diterbitkan ulang dengan klaim role aktif baru. Tidak pernah client-side saja.
+5. `POST /api/auth/logout` — mencabut refresh token; client membuang access token.
+6. `GET /api/auth/me` — pengguna saat ini, role, role aktif (bootstrap sesi).
+
+## 3. Topologi dev (tanpa nginx)
 
 ```mermaid
-flowchart BT
-    WEB["StockMonitorTso.Web<br/>UI Blazor Server + composition root (DI, auth, migrate, seed, /health, pemetaan endpoint)"]
-    API["StockMonitorTso.Api<br/>Endpoint Minimal API (/api/tso)"]
-    INFRA["StockMonitorTso.Infrastructure<br/>DbContext EF, migrasi, seed, service, audit, generator invoice"]
-    DOMAIN["StockMonitorTso.Domain<br/>Entitas, enum, perhitungan murni, model konservasi. Tanpa dependensi framework."]
-    WEB --> API
-    WEB --> INFRA
-    API --> INFRA
-    INFRA --> DOMAIN
+flowchart LR
+    DEV["Peramban"] -->|"http://localhost:3000"| VITE["TanStack Start dev server<br/>(SSR + HMR)"]
+    VITE -->|"proxy /api"| API["dotnet run<br/>src/StockMonitorTso.Api<br/>http://localhost:8080"]
+    API --> PGD[("postgres<br/>docker compose -d")]
 ```
+
+## 4. Pelapisan monorepo
 
 | Lapisan | Memiliki | Aturan |
 |---|---|---|
-| `StockMonitorTso.Domain` | Entitas (`Wilayah`, `Produk`, `Tier`, `Agen`, `Outlet`, `StokEntitas`, `RencanaKedatangan`, `MitraTso`, `TransportOrder`, `StockTransactionRecord`, `AuditLog`), service perhitungan | Tanpa EF, tanpa ASP.NET. Hanya logika murni. |
-| `StockMonitorTso.Infrastructure` | `ApplicationDbContext`, migrasi, seed loader, seluruh service bisnis, generator invoice, audit logger | Semua perubahan stok terjadi di sini dalam transaksi atomik. |
-| `StockMonitorTso.Api` | `MapGroup("/api/tso")` | Pemetaan tipis ke service. Tidak boleh berisi logika bisnis. |
-| `StockMonitorTso.Web` | Halaman Blazor, layout, `Program.cs` | UI hanya memanggil service. Tidak menghitung atau mengubah stok sendiri. Pengujian UI: `xUnit` + `WebApplicationFactory`, database SQLite sementara. |
+| `frontend/` | Halaman TanStack Start, TanStack Router/Query/Form, token Tailwind `sm-*`, interceptor auth | Hanya presentasi. Tanpa logika bisnis; memanggil REST API; menyembunyikan kontrol per role tapi tidak pernah mengandalkan itu sebagai enforcement. |
+| `StockMonitorTso.Api` | Endpoint Minimal API (auth, dashboard, stok, agen, outlet, users, tso, mitra), konfigurasi JWT, composition root | Pemetaan tipis ke service; ProblemDetails untuk semua error; role check mencerminkan matriks service. |
+| `StockMonitorTso.Domain` | Entitas, enum, perhitungan murni, model konservasi | Tanpa dependensi framework. |
+| `StockMonitorTso.Infrastructure` | `DbContext` Npgsql, migrasi, seed, seluruh service bisnis, audit, generator invoice | Semua perubahan stok dalam transaksi atomik di sini. |
+| `StockMonitorTso.Web` | Blazor (legasi selama transisi) | Dipensiunkan di R5. |
 
-## 3. Permukaan jaringan
+## 5. Permukaan jaringan
 
-| Permukaan | Path | Autentikasi | Kegunaan |
+| Rute | Target | Autentikasi | Kegunaan |
 |---|---|---|---|
-| UI | `/`, `/gudang-wilayah`, `/sales-area/register`, `/sales-area/{Wilayah}/{Produk}`, `/wilayah/{Wilayah}/agen`, `/agen/{AgenId}`, `/agen/{AgenId}/outlet`, `/outlet/{OutletId}`, `/tso`, `/tso/create`, `/tso/{Id}/edit`, `/tso/{Id}`, `/admin/users`, `/Account/*` | Kuki (pengunjung anonim ke halaman login) | Seluruh layar |
-| API | `POST /api/tso/`, `GET /api/tso/`, `GET /api/tso/{id}`, `PUT /api/tso/{id}`, `DELETE /api/tso/{id}`, `POST /api/tso/{id}/invoice`, `POST /api/tso/{id}/resync` | Kuki, `RequireAuthorization` | Order TSO sebagai JSON + unduh PDF |
-| Health | `/health` | Tidak ada | Probe liveness, health check kontainer |
+| `/` … | kontainer frontend | tidak ada (shell publik) | Halaman login dan shell aplikasi; route guard kosmetik — API yang menegakkan |
+| `/api/auth/*` | api | campuran (login terbuka; lainnya bearer) | login, refresh, logout, me, switch-role |
+| `/api/dashboard`, `/api/stock`, `/api/agen`, `/api/outlet` | api | bearer | modul monitoring |
+| `/api/tso`, `/api/mitra` | api | bearer | order TSO, invoice (unduh PDF), admin Mitra |
+| `/api/users` | api | bearer (Superadmin) | manajemen user + role |
+| `/health` | api | tidak ada | liveness; nginx mem-proxy untuk healthcheck compose |
 
-## 4. Konfigurasi runtime
+## 6. Konfigurasi
 
 | Item | Nilai |
 |---|---|
-| Database | File SQLite (`DataSource=stockmonitor.db`, path lokal saat dev, volume `stockmonitor_data` di kontainer) |
-| Perubahan skema | Hanya via migrasi EF Core (`Migrations/`), diterapkan otomatis saat startup |
-| Idle timeout | 15 menit, geser (setiap request valid me-reset timer) |
-| Akun default (seed, panjang password minimal 8, bisa di-override via konfigurasi) | `superadmin@stockmonitor.local` (Superadmin) · `operator@stockmonitor.local` (Operator) · `supervisi@stockmonitor.local` (Supervisi) · `tamu@stockmonitor.local` (Tamu) · `multi@stockmonitor.local` (Operator + Supervisi + Tamu, mulai sebagai Operator) |
+| Database | PostgreSQL (Npgsql), connection string via env (`ConnectionStrings__DefaultConnection`) |
+| JWT | issuer/audience/key via env atau user-secrets — tidak pernah di source |
+| Idle timeout | 15 menit, geser (aktivitas memicu refresh) |
+| Perubahan skema | Hanya migrasi Npgsql EF Core, diterapkan otomatis saat startup api |
 | Penomoran order | `TSO-YYYYMMDD-XXXX`, unik |
 | Aturan ETA TSO | Tanggal Keberangkatan + 7 hari |
 
-## 5. Ringkasan alur data
+## 7. Branch
 
-- Peramban mengirim form dan menerima halaman render; Minimal API juga melayani order
-  TSO sebagai JSON dan invoice sebagai unduhan file PDF.
-- Setiap jalur tulis bermuara ke service di Infrastructure, yang memeriksa role aktif
-  dulu, lalu berjalan dalam transaksi EF Core, lalu menulis baris audit.
-- Angka stok tidak pernah diedit langsung: `Stok` hanya berubah via `Receive` (masuk),
-  `Issue` (terjual, otomatis menambah `StokHabisTerjual`), `Adjust` (opname, plus atau
-  minus), atau `Transfer` (debit sumber + kredit tujuan dalam satu transaksi). Setiap
-  langkah yang membuat tier menjadi negatif ditolak ("stok tidak mencukupi") dan tidak
-  mengubah apa pun.
+- `main` — **main repository**: set dokumentasi lengkap + seluruh kode.
+- `apps` — **production update point**: hanya artefak aplikasi + deploy
+  (`src/`, `tests/`, `frontend/`, `deploy/`, `seeds/`, file Docker); dokumentasi tidak
+  pernah masuk ke sana.
+
+## 8. Ringkasan alur data
+
+- Peramban hanya berbicara dengan nginx: halaman datang dari frontend SSR, data dari
+  REST api (JSON), invoice sebagai unduhan PDF.
+- Setiap jalur tulis bermuara ke service Infrastructure: role check (klaim role aktif)
+  → transaksi EF → baris audit. Angka stok hanya berubah via `Receive`, `Issue`,
+  `Adjust±`, `Transfer` (atomik, overdraft ditolak).
+- Bacaan dihitung saat request dari snapshot PostgreSQL (CD, Exhaust Date, Status, MT,
+  agregat).

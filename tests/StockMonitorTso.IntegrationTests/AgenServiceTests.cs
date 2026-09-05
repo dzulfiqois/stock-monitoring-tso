@@ -10,11 +10,11 @@ namespace StockMonitorTso.IntegrationTests;
 
 public class AgenServiceTests : IDisposable
 {
-    private readonly TestWebApplicationFactory _factory;
+    private readonly TestApiWebApplicationFactory _factory;
 
     public AgenServiceTests()
     {
-        _factory = new TestWebApplicationFactoryNoStock();
+        _factory = new TestApiWebApplicationFactory();
     }
 
     public void Dispose()

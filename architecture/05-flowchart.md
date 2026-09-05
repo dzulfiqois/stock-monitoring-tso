@@ -18,6 +18,7 @@ flowchart TB
     DASH --> REG["Register Sales Area"]
     DASH --> TSO["TSO order list"]
     DASH --> ADM["Manajemen User (Superadmin)"]
+    DASH --> MITRA["Mitra TSO (Superadmin)"]
     DASH --> SW["Switch active role"]
     DASH --> OUT["Logout"]
     IDLE["15 min idle"] --> L1
@@ -52,8 +53,8 @@ flowchart TB
     DOU --> UPO["Modal Update per ukuran"]
     UPO --> DOU
 
-    TSO --> WIZ["Wizard step 1 - Tujuan and Obyek (destination + product + qty)"]
-    WIZ --> W2["Wizard step 2 - Rute and Jadwal (Pusat to Gudang, departure date)"]
+    TSO -->     WIZ["Wizard step 1 - Tujuan and Obyek (destination + product family + qty per SKU)"]
+    WIZ --> W2["Wizard step 2 - Rute and Jadwal (Pusat to Gudang, departure date, distance for per-km tariff)"]
     W2 --> W3["Wizard step 3 - Transporter + Estimasi Biaya (tariff x qty)"]
     W3 --> W4["Wizard step 4 - Ringkasan"]
     W4 --> SUBMIT2{"Submit - guards pass?"}
@@ -66,6 +67,8 @@ flowchart TB
 
     ADM --> CU["Modal Tambah User (email + password + roles + active role)"]
     CU --> ADM
+    MITRA --> ML["Mitra list + create / update + per-product tariff update"]
+    ML --> MITRA
 ```
 
 ## Branch notes
@@ -79,9 +82,11 @@ flowchart TB
   (plus or minus), `Intransit` and `Keterangan` are metadata.
 - **Kirim ke Agen / Kirim ke Outlet:** runs one atomic transfer per SKU with qty
   above zero. Any SKU exceeding the source balance rejects the whole transfer.
-- **TSO wizard:** product choice is a single SKU (one LPG size or minyak tanah).
-  Step 3 shows `Estimasi Biaya = tariff × quantity` from the Mitra master.
-  Submit commits the order; Preview and Generate never change data.
+- **TSO wizard:** one product family per order — minyak tanah takes a single quantity;
+  LPG takes three quantities, and any size above zero becomes a product line.
+  Step 2 records the distance (km) when the mitra's tariff is per-kilometer.
+  Step 3 shows `Estimasi Biaya = tariff × quantity` (× distance for per-km) per line
+  from the Mitra master. Submit commits the order; Preview and Generate never change data.
 - **Manajemen User:** Superadmin creates the account with an initial password and
   assigns at least one role plus the starting active role.
 
@@ -92,5 +97,18 @@ flowchart TB
 | Login | Wrong credentials or empty fields loop back with a notice. |
 | Register / Update | Duplicate (Wilayah × Produk × Tier), unknown wilayah/product (400-style error), snapshot date in the future, ETA before snapshot date. |
 | Transfers and daily updates | Overdraft ("stok tidak mencukupi"), cross-wilayah or cross-agen destination, non-positive qty (opname must not be 0). |
-| TSO Submit | Unregistered mitra, mitra not covering the destination, qty not above zero, departure before today, duplicate submit within 1 minute (returns the existing order instead), arrival slots already full (3), stale edit (concurrency conflict asks for reload). |
-| Session | Actions without the required active role are refused with a notice. |
+| TSO Submit | Unregistered mitra, mitra not covering the destination, any product-line qty not above zero, missing distance for per-km tariff, departure before today, duplicate submit within 1 minute (returns the existing order instead), arrival slots already full (3 per product), stale edit (concurrency conflict asks for reload). |
+| Mitra admin | Unknown wilayah in area coverage, capacity/tariff not above zero, tariff unit invalid for the product, empty routes or coverage. |
+| Session | Actions without the required active role are refused with a notice (403 from the API). |
+
+## SPA deployment notes (2026-09 reconstruction)
+
+- Screens are client-side routes (TanStack Router, SSR by TanStack Start): `/login`,
+  `/` (dashboard), `/gudang-wilayah`, `/sales-area/…`, `/wilayah/…/agen`, `/agen/…`,
+  `/tso`, `/mitra`, `/admin/users`. The journey and guards above are unchanged.
+- Every API call carries the Bearer access token; on 401 the app refreshes once and
+  retries, otherwise redirects to `/login`; on 403 it shows a notice.
+- Switching the active role calls `/api/auth/switch-role` and replaces the token —
+  never client-side only.
+- Idle 15 minutes = access-token expiry; activity triggers a refresh, so actively used
+  sessions keep working.

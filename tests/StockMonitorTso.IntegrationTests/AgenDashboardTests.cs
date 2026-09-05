@@ -7,11 +7,11 @@ using StockMonitorTso.Infrastructure.Services;
 
 namespace StockMonitorTso.IntegrationTests;
 
-public class AgenDashboardTests : IClassFixture<TestWebApplicationFactory>
+public class AgenDashboardTests : IClassFixture<TestApiWebApplicationFactoryWithStock>
 {
-    private readonly TestWebApplicationFactory _factory;
+    private readonly TestApiWebApplicationFactoryWithStock _factory;
 
-    public AgenDashboardTests(TestWebApplicationFactory factory)
+    public AgenDashboardTests(TestApiWebApplicationFactoryWithStock factory)
     {
         _factory = factory;
     }

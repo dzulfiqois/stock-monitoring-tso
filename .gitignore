@@ -35,6 +35,11 @@ Thumbs.db
 logs/
 *.log
 
+# Frontend (TanStack Start)
+frontend/node_modules/
+frontend/.output/
+frontend/.nitro/
+
 # Secrets / local env
 .env
 
@@ -42,7 +47,6 @@ logs/
 docs/
 stitch_dashboard_monitoring_stok_migas/
 DESIGN_REFERENCES.html
-Monitoring Tabung RPM(1).xlsx
 note
 workspace.md
 persona_template.bak
@@ -51,3 +55,9 @@ USER_REQUIREMENTS.md.backup
 # Markdown/SPec di root (plan, agen, spec) — bukan bagian aplikasi
 *.md
 !src/**/*.md
+
+# --- branch 'main': main repository — dokumentasi utama kembali dilacak ---
+!PLAN.md
+!AGENTS.md
+!docs/
+!docs/**
