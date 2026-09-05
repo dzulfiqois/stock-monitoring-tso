@@ -3,6 +3,12 @@
 > Dibuat: 2026-08 · Diperbarui: 2026-09 (slice rekonstruksi) · Untuk melanjutkan di session baru. Bacaan wajib sebelum lanjut:
 > `PLAN.md` (roadmap rekonstruksi R0–R5), `AGENTS.md` (runbook & traps), `docs/PHASE_CHECKLIST.md`, `docs/CHECKLIST_DOD.md`.
 
+## Slice 2026-09 — R5c Sinkron produksi (selesai)
+
+**Status: `apps` kini = state produksi main.** Proses: commit main (`b2dbc30` feat r0–r5b) → `git switch apps` → `git merge main --ff-only` → **prune dokumentasi** (`git rm` PLAN/AGENTS/docs/architecture/arsitektur) → commit `6bebedd`. Verifikasi di `apps`: build 0/0 · 132/132 test · frontend build/lint/vitest hijau. Tree `apps`: `.config .dockerignore .env.example .gitignore Directory.Build.props StockMonitorTso.sln deploy docker-compose.yml frontend seeds src tests` — tanpa dokumentasi. Prosedur sinkron berikutnya sama: merge main (FF) → prune docs → commit. Commit belum di-push — push `origin main` + `origin apps` saat siap deploy.
+
+---
+
 ## Slice 2026-09 — R5b Hardening (selesai)
 
 **Status: R5b hijau.** Isi:
